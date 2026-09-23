@@ -61,6 +61,10 @@ _catalyst_completions() {
 
     # 2. Parametros contextuais de cada subcomando
     case "$prev" in
+        completion)
+            COMPREPLY=( $(compgen -W "install uninstall source help" -- "$cur") )
+            return 0
+            ;;
         serve)
             COMPREPLY=( $(compgen -W "--stop stop --port -p 8000 8080 3000" -- "$cur") )
             return 0

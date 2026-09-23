@@ -81,7 +81,7 @@ Comandos disponiveis:
   clean       Limpa artefatos temporarios e gerados em dist/
   all         Executa o pipeline completo de publicacao (build, validate, pack)
   help        Exibe esta mensagem de ajuda detalhada
-
+  completion  Instala ou remove o autocompletar da CLI no shell (~/.bashrc)
 Exemplos:
   $0 all
   $0 test
@@ -2121,16 +2121,68 @@ case "$COMMAND" in
         echo -e "\n[OK] Pipeline completo executado com sucesso!"
         ;;
     completion)
-        show_banner
-        echo "Instrucoes para ativar o autocompletar da CLI no Shell:"
-        echo ""
-        echo "  [Bash / Git Bash]:"
-        echo "    source scripts/completion.bash"
-        echo ""
-        echo "  [Zsh]:"
-        echo "    autoload -U +X bashcompinit && bashcompinit && source scripts/completion.bash"
-        echo ""
-        echo "Dica: adicione 'source $(pwd)/scripts/completion.bash' ao seu ~/.bashrc ou ~/.zshrc."
+        action="${2:-install}"
+        completion_file="${SCRIPTS_DIR}/completion.bash"
+
+        if [ "$action" != "source" ] && [ "$action" != "--source" ]; then
+            show_banner
+        fi
+
+        if [ ! -f "$completion_file" ]; then
+            echo "[ERRO] Script de autocompletar nao encontrado: $completion_file" >&2
+            exit 1
+        fi
+
+        # Detecta arquivo de configuracao do shell do usuario
+        rc_file=""
+        if [ -n "$ZSH_VERSION" ] || [[ "$SHELL" =~ zsh$ ]]; then
+            rc_file="${HOME}/.zshrc"
+        elif [ -f "${HOME}/.bashrc" ]; then
+            rc_file="${HOME}/.bashrc"
+        elif [ -f "${HOME}/.bash_profile" ]; then
+            rc_file="${HOME}/.bash_profile"
+        else
+            rc_file="${HOME}/.bashrc"
+        fi
+
+        case "$action" in
+            source|--source)
+                cat "$completion_file"
+                ;;
+            uninstall|--uninstall|-u)
+                if [ -f "$rc_file" ] && grep -F -q "Catalyst Shell Engine Autocompletion" "$rc_file" 2>/dev/null; then
+                    sed -i '/# Catalyst Shell Engine Autocompletion/,+2d' "$rc_file" 2>/dev/null ||                     sed -i '' '/# Catalyst Shell Engine Autocompletion/,+2d' "$rc_file" 2>/dev/null
+                    echo "[OK] Autocompletar desinstalado de $rc_file com sucesso."
+                else
+                    echo "[INFO] O autocompletar nao estava instalado em $rc_file."
+                fi
+                ;;
+            help|--help|-h)
+                echo "Uso: ./catalyst.sh completion [install|uninstall|source]"
+                echo ""
+                echo "Comandos:"
+                echo "  install    Instala o autocompletar no seu arquivo de perfil (~/.bashrc ou ~/.zshrc) [PADRAO]"
+                echo "  uninstall  Remove a configuracao de autocompletar do seu arquivo de perfil"
+                echo "  source     Exibe o script de autocompletar no stdout para 'source <(...)'"
+                ;;
+            install|--install|-i|*)
+                [ ! -f "$rc_file" ] && touch "$rc_file"
+
+                if grep -F -q "Catalyst Shell Engine Autocompletion" "$rc_file" 2>/dev/null || grep -F -q "scripts/completion.bash" "$rc_file" 2>/dev/null; then
+                    echo "[OK] O autocompletar ja esta instalado em: $rc_file"
+                else
+                    echo "" >> "$rc_file"
+                    echo "# Catalyst Shell Engine Autocompletion" >> "$rc_file"
+                    echo "[ -f \"$completion_file\" ] && source \"$completion_file\"" >> "$rc_file"
+                    echo "[OK] Autocompletar instalado com sucesso em: $rc_file"
+                fi
+
+                echo ""
+                echo "Para ativar imediatamente nesta sessao do terminal, execute:"
+                echo "  source \"$completion_file\""
+                echo "ou reinicie o seu terminal."
+                ;;
+        esac
         ;;
     help|--help|-h)
         show_banner

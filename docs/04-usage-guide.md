@@ -20,13 +20,14 @@ Antes da primeira execução, certifique-se de que o script principal possui per
 # Conceder permissão de execução (Linux / macOS / Git Bash / WSL)
 chmod +x catalyst.sh
 
-# Ativar autocompletar no Bash / Git Bash:
+# Instalar o autocompletar permanentemente no shell (~/.bashrc ou ~/.zshrc):
+./catalyst.sh completion
+
+# Ou carregar pontualmente na sessão atual:
 source scripts/completion.bash
 
-
-# Exibir tela de ajuda e instruções de autocompletar:
+# Exibir tela de ajuda da CLI:
 ./catalyst.sh help
-./catalyst.sh completion
 ```
 
 ---
