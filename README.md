@@ -55,14 +55,12 @@ CatalystShellEngine/
 │   │   └── server.sh         # Controle de processos (ps, kill)
 │   └── utils/
 │       └── logger.sh         # Cores ANSI e formatação de saída
-├── dist/                     # Artefatos gerados pelo pipeline
-│   ├── full-document.md      # Documento mestre consolidado e higienizado
-│   ├── summary.md            # Sumário navegável gerado pelo AWK
-│   ├── metrics.txt           # Relatório estatístico de linhas e palavras
-│   ├── index.html            # Interface web interativa local
-│   ├── sigaa-report.md       # Relatório unificado com código numerado para o SIGAA
-│   ├── catalyst-release-*.tar.gz     # Pacote release pronto para distribuição
-│   └── catalyst-release-*.tar.gz.md5 # Assinatura criptográfica MD5
+├── dist/                     # Artefatos organizados gerados pelo pipeline
+│   ├── index.html            # Único arquivo na raiz: Interface web interativa + DocBot
+│   ├── docs/                 # Documentos consolidados (full-document.md, summary.md)
+│   ├── metrics/              # Telemetria quantitativa (metrics.txt)
+│   ├── reports/              # Relatórios acadêmicos (sigaa-report.md)
+│   └── releases/             # Pacotes de distribuição (tar.gz e .md5)
 ├── README.md                 # Este documento de referência
 └── CEFET_REPORT.md           # Documento oficial com a descrição do trabalho e planilha de 20 conceitos
 ```

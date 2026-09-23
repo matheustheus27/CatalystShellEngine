@@ -78,7 +78,8 @@ flowchart TD
   * Mantém acumuladores numéricos independentes para níveis H1, H2 e H3 (`h1`, `h2`, `h3`).
   * Gera numeração sequencial formatada (ex: `1.`, `1.1.`, `1.1.1.`).
   * Constrói âncoras (*slugs*) limpando caracteres especiais (`gsub(/[^a-z0-9_-]/, "", anchor)`).
-  * Produz o arquivo `dist/summary.md` com recuos proporcionais para navegação em árvore.
+  * Constrói âncoras (*slugs*) limpando caracteres especiais (`gsub(/[^a-z0-9_-]/, "", anchor)`).
+  * Produz o arquivo `dist/docs/summary.md` com recuos proporcionais para navegação em árvore.
 
 ### Estágio 4: Auditoria de Links e Imagens com Expressões Regulares (`validate_links_regex`)
 - Varre o documento unificado utilizando **`grep -E -o '\[[^]]+\]\(([^)]+)\)'`**.
@@ -88,16 +89,17 @@ flowchart TD
 ### Estágio 5: Cálculo Estatístico de Métricas e Integridade (`compute_statistics`)
 - Extração de métricas quantitativas de volume utilizando `wc -l` (linhas) e `wc -w` (palavras).
 - Amostragem instantânea de abertura e encerramento do compêndio via `head -n 3` e `tail -n 3`.
-- Consolidação do relatório estruturado em `dist/metrics.txt`.
+- Consolidação do relatório estruturado em `dist/metrics/metrics.txt`.
 
-### Estágio 6: Geração de Interface Web Interativa (`generate_html_preview`)
-- Criação autônoma do arquivo `dist/index.html`.
+### Estágio 6: Geração de Interface Web Interativa com ChatBot (`generate_html_preview`)
+- Criação autônoma do arquivo `dist/index.html` (único arquivo na raiz de distribuição).
 - Interface moderna inspirada no sistema de design **GlassHub Quasar** (vidro fosco, tema escuro, variáveis CSS HSL, painel lateral responsivo e renderizador Markdown dinâmico com fallback).
+- **Catalyst DocBot (Assistente Virtual Integrado)**: Motor de recuperação de informação 100% offline em Vanilla JS, com busca por seções, deep linking, botões de ação e comandos de terminal (`/help`, `/conceitos`, `/stats`, `/benchmark`).
 
 ### Estágio 7: Empacotamento e Certificação de Release (`package_release`)
 - Compactação e compressão gzip de todos os artefatos gerados (`tar -czf`).
 - Atribuição de permissões simbólicas de segurança ao bundle (`chmod u=rw,go=r`).
-- Geração automatizada de hash criptográfico de integridade (`md5sum` ou `cksum`), salvando a assinatura em `catalyst-release-*.tar.gz.md5`.
+- Geração automatizada de hash criptográfico de integridade (`md5sum` ou `cksum`), salvando a assinatura em `dist/releases/catalyst-release-*.tar.gz.md5`.
 
 ---
 
@@ -115,12 +117,17 @@ CatalystShellEngine/
 │   ├── 05-benchmarks.md      # Análise de performance vs. GlassHub Catalyst original
 │   └── 06-conclusion.md      # Considerações finais, maturidade e roadmap
 ├── dist/                     # Diretório de distribuição compilado e certificado
-│   ├── full-document.md      # Documento único consolidado e higienizado
-│   ├── summary.md            # Sumário hierárquico navegável gerado por AWK
-│   ├── metrics.txt           # Relatório estatístico de linhas e palavras (wc)
-│   ├── index.html            # Interface web interativa para leitura local
-│   ├── catalyst-release-*.tar.gz     # Bundle empacotado para distribuição
-│   └── catalyst-release-*.tar.gz.md5 # Hash MD5 de integridade imutável
+│   ├── index.html            # Único arquivo na raiz: Interface web interativa + DocBot
+│   ├── docs/                 # Subpasta de compilação textual unificada
+│   │   ├── full-document.md  # Documento único consolidado e higienizado
+│   │   └── summary.md        # Sumário hierárquico navegável gerado por AWK
+│   ├── metrics/              # Subpasta de telemetria estatística
+│   │   └── metrics.txt       # Relatório quantitativo de linhas e palavras (wc)
+│   ├── reports/              # Subpasta de relatórios acadêmicos oficiais
+│   │   └── sigaa-report.md   # Relatório unificado com código numerado para o SIGAA
+│   └── releases/             # Subpasta de empacotamento e distribuição
+│       ├── catalyst-release-*.tar.gz     # Bundle empacotado para distribuição
+│       └── catalyst-release-*.tar.gz.md5 # Hash MD5 de integridade imutável
 ├── scripts/                  # Biblioteca modular com componentes especializados
 │   ├── core/                 # Módulos isolados de parsing, validação e sanitização
 │   └── utils/                # Utilitários de logging colorido e formatação ANSI

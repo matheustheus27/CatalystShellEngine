@@ -2,7 +2,7 @@
 # ==============================================================================
 # PROJETO: Catalyst Shell Engine
 # DISCIPLINA: TEFC: Shell Scripting - Engenharia da Computação (CEFET-MG)
-# AUTOR: Matheus (GlassHub Ecosystem)
+# AUTOR: Matheus Thiago de Souza Ferreira
 # DATA: 2026-09-22
 # DESCRICAO:
 #   Orquestrador e motor de documentacao tecnica modular, 100% desenvolvido
@@ -24,11 +24,15 @@ BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCS_DIR="${BASE_DIR}/docs"
 DIST_DIR="${BASE_DIR}/dist"
 SCRIPTS_DIR="${BASE_DIR}/scripts"
-OUTPUT_DOC="${DIST_DIR}/full-document.md"
-OUTPUT_TOC="${DIST_DIR}/summary.md"
+DOCS_OUT_DIR="${DIST_DIR}/docs"
+METRICS_OUT_DIR="${DIST_DIR}/metrics"
+REPORTS_OUT_DIR="${DIST_DIR}/reports"
+RELEASES_OUT_DIR="${DIST_DIR}/releases"
+OUTPUT_DOC="${DOCS_OUT_DIR}/full-document.md"
+OUTPUT_TOC="${DOCS_OUT_DIR}/summary.md"
 OUTPUT_HTML="${DIST_DIR}/index.html"
-OUTPUT_BUNDLE="${DIST_DIR}/catalyst-release-${APP_VERSION}.tar.gz"
-METRICS_FILE="${DIST_DIR}/metrics.txt"
+OUTPUT_BUNDLE="${RELEASES_OUT_DIR}/catalyst-release-${APP_VERSION}.tar.gz"
+METRICS_FILE="${METRICS_OUT_DIR}/metrics.txt"
 PID_SERVER_FILE="/tmp/catalyst_server.pid"
 
 # Atributo de variavel: inteira (Conceito 12)
@@ -95,7 +99,7 @@ init_env() {
     echo "[1/7] Inicializando estrutura de diretorios..."
     
     # Sistema de arquivos: mkdir (Conceito 03) e Desvio condicional || (Conceito 16)
-    mkdir -p "$DIST_DIR" || { echo "Falha ao criar $DIST_DIR" >&2; exit 1; }
+    mkdir -p "$DIST_DIR" "$DOCS_OUT_DIR" "$METRICS_OUT_DIR" "$REPORTS_OUT_DIR" "$RELEASES_OUT_DIR" || { echo "Falha ao criar subpastas em $DIST_DIR" >&2; exit 1; }
 
     # Permissoes em representacao octal: chmod (Conceito 04)
     chmod 755 "$DIST_DIR"
@@ -1161,7 +1165,7 @@ generate_html_preview() {
         });
 
         // Carrega metricas de build
-        fetch('metrics.txt')
+        fetch('metrics/metrics.txt')
             .then(r => r.text())
             .then(text => {
                 const docsMatch = text.match(/Total de Capitulos:\s*(\d+)/);
@@ -1174,7 +1178,7 @@ generate_html_preview() {
             .catch(() => {});
 
         // Carrega Sumario
-        fetch('summary.md')
+        fetch('docs/summary.md')
             .then(r => r.text())
             .then(md => {
                 const lines = md.split('\n');
@@ -1209,7 +1213,7 @@ generate_html_preview() {
         });
 
         // Carrega Documento com Renderizador Markdown (Marked ou fallback)
-        fetch('full-document.md')
+        fetch('docs/full-document.md')
             .then(r => r.text())
             .then(async md => {
                 let cleanMd = md.replace(/^---[\r\n]+[\s\S]*?[\r\n]+---\s*/, '');
@@ -1684,7 +1688,7 @@ package_release() {
     echo "[7/7] Empacotando versao de distribuicao..."
     
     # Sistema de arquivos: tar e gzip (Conceito 03)
-    tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" "full-document.md" "summary.md" "metrics.txt" "index.html" 2>/dev/null
+    tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" "docs" "metrics" "reports" "index.html" 2>/dev/null
     
     # Permissoes simbolicas: chmod (Conceito 04)
     chmod u=rw,go=r "$OUTPUT_BUNDLE"
@@ -1796,8 +1800,8 @@ clean_dist() {
 # ==============================================================================
 generate_sigaa_report() {
     echo "[SIGAA] Gerando relatorio oficial unificado com codigo numerado..."
-    local report_output="${DIST_DIR}/sigaa-report.md"
-    local numbered_code="${DIST_DIR}/catalyst-code-numbered.txt"
+    local report_output="${REPORTS_OUT_DIR}/sigaa-report.md"
+    local numbered_code="${REPORTS_OUT_DIR}/catalyst-code-numbered.txt"
 
     # Usa nl -ba para numerar todas as linhas de codigo do script
     if command -v nl &>/dev/null; then
@@ -1812,7 +1816,7 @@ generate_sigaa_report() {
         echo ""
         echo "**Instituição**: Centro Federal de Educação Tecnológica de Minas Gerais (CEFET-MG)"
         echo "**Disciplina**: TEFC: Shell Scripting - Engenharia da Computação"
-        echo "**Aluno**: Matheus | **Ano/Semestre**: 2026/2"
+        echo "**Aluno**: Matheus Ferreira | **Ano/Semestre**: 2026/2"
         echo "**Data de Geração**: $(date '+%d/%m/%Y %H:%M:%S')"
         echo ""
         echo "---"
@@ -1929,7 +1933,7 @@ run_tests() {
 
     # 8. Teste do gerador de relatório SIGAA
     assert_success "Geração de relatório unificado para o SIGAA" generate_sigaa_report
-    assert_file_exists "Arquivo sigaa-report.md gerado" "${DIST_DIR}/sigaa-report.md"
+    assert_file_exists "Arquivo sigaa-report.md gerado" "${REPORTS_OUT_DIR}/sigaa-report.md"
 
     echo "================================================================="
     if [ "$test_failures" -eq 0 ]; then

@@ -33,14 +33,14 @@ source scripts/completion.bash
 
 | Subcomando | Descrição Operacional | Efeitos Colaterais / Artefatos Gerados |
 |---|---|---|
-| `./catalyst.sh all` | Executa o pipeline completo de ponta a ponta (build, sumário, auditoria, métricas, preview web e release compactado). | Gera todos os artefatos sob `dist/`. |
-| `./catalyst.sh build` | Consolida todos os capítulos `docs/*.md` na ordem natural, higieniza o texto com `sed`, extrai o sumário com `awk` e compila o `index.html`. | `dist/full-document.md`, `dist/summary.md`, `dist/index.html` |
+| `./catalyst.sh all` | Executa o pipeline completo de ponta a ponta (build, sumário, auditoria, métricas, preview web e release compactado). | Gera todos os artefatos organizados sob `dist/`. |
+| `./catalyst.sh build` | Consolida todos os capítulos `docs/*.md` na ordem natural, higieniza o texto com `sed`, extrai o sumário com `awk` e compila o `index.html`. | `dist/docs/full-document.md`, `dist/docs/summary.md`, `dist/index.html` |
 | `./catalyst.sh validate` | Executa auditoria estrita de links Markdown internos e ativos locais de imagem via expressões regulares `grep -E -o`. | Relatório de validação no console. |
-| `./catalyst.sh toc` | Executa exclusivamente o parser em AWK para extrair cabeçalhos e gerar o sumário hierárquico indexado. | `dist/summary.md` |
-| `./catalyst.sh sanitize` | Executa o programa em `sed` para remover espaços residuais em fim de linha e normalizar cabeçalhos Markdown. | `dist/full-document.md` |
-| `./catalyst.sh stats` | Computa contagem de palavras e linhas via `wc`, extrai amostras de cabeçalho/rodapé e grava o sumário estatístico. | `dist/metrics.txt` |
-| `./catalyst.sh pack` | Compacta os artefatos de distribuição em `.tar.gz`, aplica permissões de segurança octais/simbólicas e gera assinatura `md5sum`. | `dist/catalyst-release-*.tar.gz`, `*.tar.gz.md5` |
-| `./catalyst.sh report` | Gera o documento oficial unificado com o código-fonte numerado linha a linha via `nl -ba` pronto para entrega no SIGAA. | `dist/sigaa-report.md` |
+| `./catalyst.sh toc` | Executa exclusivamente o parser em AWK para extrair cabeçalhos e gerar o sumário hierárquico indexado. | `dist/docs/summary.md` |
+| `./catalyst.sh sanitize` | Executa o programa em `sed` para remover espaços residuais em fim de linha e normalizar cabeçalhos Markdown. | `dist/docs/full-document.md` |
+| `./catalyst.sh stats` | Computa contagem de palavras e linhas via `wc`, extrai amostras de cabeçalho/rodapé e grava o sumário estatístico. | `dist/metrics/metrics.txt` |
+| `./catalyst.sh pack` | Compacta os artefatos de distribuição em `.tar.gz`, aplica permissões de segurança octais/simbólicas e gera assinatura `md5sum`. | `dist/releases/catalyst-release-*.tar.gz`, `*.tar.gz.md5` |
+| `./catalyst.sh report` | Gera o documento oficial unificado com o código-fonte numerado linha a linha via `nl -ba` pronto para entrega no SIGAA. | `dist/reports/sigaa-report.md` |
 | `./catalyst.sh test` | Executa a suíte de testes automatizados com 15 asserções (diretórios, parsing, AWK, regex, servidor, MD5). | Saída de testes colorida no console. |
 | `./catalyst.sh watch` | Entra em modo de observação contínua, monitorando `docs/*.md` e recompilando automaticamente a cada salvamento. | Recompilação automática sob demanda. |
 | `./catalyst.sh serve` | Inicializa o servidor HTTP local em segundo plano (*background*), armazenando o PID para controle de ciclo de vida. | Processo em background na porta 8000 (ou customizada). |
@@ -89,7 +89,7 @@ source scripts/completion.bash
 ```bash
 ./catalyst.sh report
 ```
-Gera `dist/sigaa-report.md` unificando a proposta do problema, o código-fonte integral de `catalyst.sh` com cada linha numerada pelo utilitário `nl -ba` e a planilha de 20 conceitos com números de linhas auditados.
+Gera `dist/reports/sigaa-report.md` unificando a proposta do problema, o código-fonte integral de `catalyst.sh` com cada linha numerada pelo utilitário `nl -ba` e a planilha de 20 conceitos com números de linhas auditados.
 
 ### 4. Modo Observador com Live-Reload
 ```bash
@@ -112,9 +112,16 @@ Mantém um laço contínuo no terminal. Ao editar e salvar qualquer arquivo em `
 ```
 
 ### 6. Recursos da Interface Web Interativa (`index.html`)
+- **Raiz Limpa do `dist/`**: O `index.html` reside de forma limpa e isolada na raiz de `dist/`, consumindo automaticamente as subpastas `docs/` e `metrics/`.
 - **Busca Instantânea**: Digite no campo `🔍 Buscar no sumário...` para filtrar seções em tempo real.
 - **Alternador de Tema**: Clique no botão `🌓 Tema` para alternar entre o tema escuro *glassmorphic* e o tema claro corporativo (a preferência é salva no navegador).
+- **Modo Foco / Leitura Ampla**: Oculte a barra lateral com o botão `📐 Foco` e restaure-a a qualquer momento pelo botão flutuante `📑 Sumário`.
 - **Exportação para PDF**: Clique no botão `🖨️ PDF` (ou `Ctrl + P`) para imprimir ou salvar como PDF formatado em estilo apostila A4 via regras de estilo `@media print`.
+- **Catalyst DocBot (Assistente Virtual Integrado)**:
+  - Clique no botão flutuante 💬 no canto inferior direito para abrir a janela de chat.
+  - Faça perguntas livres sobre conceitos, comandos ou arquitetura (ex: *"como funciona o sed"*, *"listar comandos"*, *"o que faz o conceito 19"*).
+  - Use comandos estilo terminal: `/help`, `/conceitos`, `/cli`, `/stats`, `/benchmark`, `/limpar`.
+  - Clique no botão **"📖 Ver no documento"** exibido nas respostas para saltar com scroll suave diretamente até a âncora correspondente no compêndio.
 
 ---
 
