@@ -1,0 +1,62 @@
+# ==============================================================================
+# Catalyst Shell Engine - .gitignore
+# ==============================================================================
+
+# Diretório de distribuição e compilação (gerado por ./catalyst.sh build / all)
+dist/*
+!dist/.gitkeep
+
+# Arquivos temporários de concatenação e compilação
+*.tmp
+*.temp
+.concat_raw.tmp
+catalyst-code-numbered.txt
+
+# Pacotes de release e assinaturas criptográficas
+*.tar.gz
+*.tar
+*.zip
+*.md5
+*.sha256
+
+# Controle de processos em background e logs do servidor
+*.pid
+.server.pid
+*.log
+catalyst-server.log
+
+# Ambientes e variáveis locais
+.env
+.env.local
+.env.*.local
+
+# Backups e arquivos de recuperação de editores
+*.bak
+*.swp
+*.swo
+*~
+*.orig
+
+# Arquivos do sistema operacional
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs e editores de código
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.sublime-project
+*.sublime-workspace
+
+# Scratchpads e arquivos de IA / agentes
+.agents/
+.agent/
+scratch/

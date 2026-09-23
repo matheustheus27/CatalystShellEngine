@@ -1,0 +1,128 @@
+# 02. Arquitetura e Engenharia de Pipeline
+
+## Princípios de Design e Filosofia Unix
+
+O design arquitetural do **Catalyst Shell Engine** fundamenta-se nos princípios canônicos da filosofia Unix formulados por Doug McIlroy e Brian Kernighan:
+
+1. **Faça apenas uma coisa e faça-a bem**: Cada subcomando do motor (`build`, `validate`, `toc`, `sanitize`, `stats`, `pack`, `serve`) encapsula uma etapa autônoma do ciclo de vida da documentação.
+2. **Escreva programas para trabalharem juntos**: As saídas de um utilitário fluem naturalmente para a entrada de outro por meio de *pipes* (`|`) e redirecionamentos (`>`, `>>`, `<`).
+3. **Trate o texto como a interface universal**: Em vez de binários opacos ou bancos de dados relacionais complexos, toda a informação é armazenada e manipulada como fluxos de texto Markdown puro e relatórios legíveis.
+
+---
+
+## Diagrama de Fluxo de Dados do Pipeline
+
+O pipeline do Catalyst Shell Engine opera em **7 estágios sequenciais**, garantindo validação, higienização e empacotamento determinístico:
+
+```mermaid
+flowchart TD
+    subgraph INGESTION ["1. Ingestão e Preparação"]
+        A["📁 docs/*.md (Capítulos)"] --> B["⚙️ init_env & sort -V"]
+        B --> C["📄 .concat_raw.tmp"]
+    end
+
+    subgraph PROCESSING ["2. Processamento Léxico & Parsing"]
+        C --> D["🧹 sed Sanitizer (Higienização)"]
+        D --> E["📄 dist/full-document.md"]
+        E --> F["📑 awk TOC Engine (Sumário 3 Níveis)"]
+        F --> G["📄 dist/summary.md"]
+    end
+
+    subgraph AUDIT ["3. Auditoria & Telemetria"]
+        E --> H["🔍 grep -E Regex Link Auditor"]
+        H --> I["✅ Validação de Ativos Locais"]
+        E --> J["📊 wc & head/tail Metrics Engine"]
+        J --> K["📄 dist/metrics.txt"]
+    end
+
+    subgraph ARTIFACTS ["4. Publicação & Distribuição"]
+        E --> L["🌐 HTML5 Generator (Glassmorphism)"]
+        G --> L
+        K --> L
+        L --> M["📄 dist/index.html"]
+        
+        E --> N["📦 tar + gzip Packager"]
+        G --> N
+        K --> N
+        M --> N
+        N --> O["🔒 chmod 755/644"]
+        O --> P["🔑 md5sum Checksum Generator"]
+        P --> Q["📦 dist/catalyst-release-1.0.0.tar.gz"]
+    end
+
+    subgraph LIFECYCLE ["5. Gerenciamento de Processos"]
+        Q --> R["🚀 python3 http.server (Background $)"]
+        R --> S["📋 PID Tracking (/tmp/catalyst_server.pid)"]
+        S --> T["🛑 kill -15 / kill -9 Termination"]
+    end
+```
+
+---
+
+## Detalhamento dos 7 Estágios do Pipeline
+
+### Estágio 1: Preparação do Ambiente (`init_env`)
+- Criação garantida do diretório de saída `dist/` com controle de erro (`mkdir -p "$DIST_DIR" || exit 1`).
+- Definição de permissões octais estritas (`chmod 755 "$DIST_DIR"`).
+- Truncamento e inicialização limpa de relatórios de métricas residuais com redirecionamento vazio (`> "$METRICS_FILE"`).
+
+### Estágio 2: Consolidação e Sanitização Léxica (`consolidate_docs`)
+- Varredura determinística de todos os capítulos via `sort -V` (ordenação natural que preserva a sequência `00`, `01`, `02`... `10`).
+- Concatenação limpa com injeção de comentários semânticos (`<!-- Capitulo: ... -->`).
+- Pipeline em **`sed -E`**:
+  * Remoção cirúrgica de espaços e tabulações no final de linhas (`s/[ \t]+$//`).
+  * Normalização do espaçamento de cabeçalhos Markdown, garantindo exatamente um espaço após a sequência de `#` (`s/^(#+)[ \t]+/\1 /`).
+
+### Estágio 3: Extração de Sumário Hierárquico via AWK (`generate_toc_awk`)
+- O processamento de cabeçalhos Markdown é delegado a um programa completo em **AWK**:
+  * Mantém acumuladores numéricos independentes para níveis H1, H2 e H3 (`h1`, `h2`, `h3`).
+  * Gera numeração sequencial formatada (ex: `1.`, `1.1.`, `1.1.1.`).
+  * Constrói âncoras (*slugs*) limpando caracteres especiais (`gsub(/[^a-z0-9_-]/, "", anchor)`).
+  * Produz o arquivo `dist/summary.md` com recuos proporcionais para navegação em árvore.
+
+### Estágio 4: Auditoria de Links e Imagens com Expressões Regulares (`validate_links_regex`)
+- Varre o documento unificado utilizando **`grep -E -o '\[[^]]+\]\(([^)]+)\)'`**.
+- Filtra links externos (`http://`, `https://`) e âncoras locais (`#`), isolando referências a caminhos de arquivos relativos.
+- Testa a existência de cada ativo local referenciado (`[ -f "$target" ] || [ -d "$target" ]`), alertando preventivamente contra documentações quebradas.
+
+### Estágio 5: Cálculo Estatístico de Métricas e Integridade (`compute_statistics`)
+- Extração de métricas quantitativas de volume utilizando `wc -l` (linhas) e `wc -w` (palavras).
+- Amostragem instantânea de abertura e encerramento do compêndio via `head -n 3` e `tail -n 3`.
+- Consolidação do relatório estruturado em `dist/metrics.txt`.
+
+### Estágio 6: Geração de Interface Web Interativa (`generate_html_preview`)
+- Criação autônoma do arquivo `dist/index.html`.
+- Interface moderna inspirada no sistema de design **GlassHub Quasar** (vidro fosco, tema escuro, variáveis CSS HSL, painel lateral responsivo e renderizador Markdown dinâmico com fallback).
+
+### Estágio 7: Empacotamento e Certificação de Release (`package_release`)
+- Compactação e compressão gzip de todos os artefatos gerados (`tar -czf`).
+- Atribuição de permissões simbólicas de segurança ao bundle (`chmod u=rw,go=r`).
+- Geração automatizada de hash criptográfico de integridade (`md5sum` ou `cksum`), salvando a assinatura em `catalyst-release-*.tar.gz.md5`.
+
+---
+
+## Organização de Diretórios e Componentes
+
+```text
+CatalystShellEngine/
+├── catalyst.sh               # Orquestrador mestre e CLI unificada (550+ linhas de Shell)
+├── docs/                     # Fonte primária da documentação técnica dividida em capítulos
+│   ├── 00-cover.md           # Capa oficial e metadados institucionais
+│   ├── 01-overview.md        # Visão geral, contexto do GlassHub e matriz de capacidades
+│   ├── 02-architecture.md    # Engenharia do pipeline, diagrama Mermaid e estágios
+│   ├── 03-concepts.md        # Detalhamento exaustivo dos 20 conceitos do enunciado
+│   ├── 04-usage-guide.md     # Manual completo de operação da linha de comando
+│   ├── 05-benchmarks.md      # Análise de performance vs. GlassHub Catalyst original
+│   └── 06-conclusion.md      # Considerações finais, maturidade e roadmap
+├── dist/                     # Diretório de distribuição compilado e certificado
+│   ├── full-document.md      # Documento único consolidado e higienizado
+│   ├── summary.md            # Sumário hierárquico navegável gerado por AWK
+│   ├── metrics.txt           # Relatório estatístico de linhas e palavras (wc)
+│   ├── index.html            # Interface web interativa para leitura local
+│   ├── catalyst-release-*.tar.gz     # Bundle empacotado para distribuição
+│   └── catalyst-release-*.tar.gz.md5 # Hash MD5 de integridade imutável
+├── scripts/                  # Biblioteca modular com componentes especializados
+│   ├── core/                 # Módulos isolados de parsing, validação e sanitização
+│   └── utils/                # Utilitários de logging colorido e formatação ANSI
+└── CEFET_REPORT.md           # Relatório acadêmico oficial com planilha de conformidade
+```
