@@ -2120,6 +2120,18 @@ case "$COMMAND" in
         package_release
         echo -e "\n[OK] Pipeline completo executado com sucesso!"
         ;;
+    completion)
+        show_banner
+        echo "Instrucoes para ativar o autocompletar da CLI no Shell:"
+        echo ""
+        echo "  [Bash / Git Bash]:"
+        echo "    source scripts/completion.bash"
+        echo ""
+        echo "  [Zsh]:"
+        echo "    autoload -U +X bashcompinit && bashcompinit && source scripts/completion.bash"
+        echo ""
+        echo "Dica: adicione 'source $(pwd)/scripts/completion.bash' ao seu ~/.bashrc ou ~/.zshrc."
+        ;;
     help|--help|-h)
         show_banner
         show_help

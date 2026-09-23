@@ -17,14 +17,16 @@ O **Catalyst Shell Engine** foi desenvolvido para operar nativamente em qualquer
 Antes da primeira execução, certifique-se de que o script principal possui permissões de execução adequadas:
 
 ```bash
-# Conceder permissão de execução
+# Conceder permissão de execução (Linux / macOS / Git Bash / WSL)
 chmod +x catalyst.sh
 
-# Ativar autocompletar no Bash (opcional, para usar Tab)
+# Ativar autocompletar no Bash / Git Bash:
 source scripts/completion.bash
 
-# Exibir a tela de ajuda com a lista de comandos
+
+# Exibir tela de ajuda e instruções de autocompletar:
 ./catalyst.sh help
+./catalyst.sh completion
 ```
 
 ---
