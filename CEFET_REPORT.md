@@ -3,7 +3,7 @@
 **Instituição**: Centro Federal de Educação Tecnológica de Minas Gerais (CEFET-MG)  
 **Departamento**: Departamento de Computação (DECOM)  
 **Disciplina**: TEFC: Shell Scripting - Engenharia da Computação  
-**Aluno**: Matheus Thiago de Souza Ferreira
+**Aluno**: Matheus Thiago de Souza Ferreira  
 **Ano/Semestre**: 2026/2  
 **Projeto de Referência**: [GlassHub Catalyst](https://github.com/matheustheus27/GlassHubCatalyst)  
 **Script Principal Avaliado**: [`catalyst.sh`](catalyst.sh)  
