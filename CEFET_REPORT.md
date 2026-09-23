@@ -58,19 +58,19 @@ A tabela a seguir apresenta os conceitos utilizados no script principal [`cataly
 |---|---|---|---|---|---|
 | 01 | 01 Comandos básicos | Comandos básicos | 56 | `echo " Data do Sistema: $(date '+%d/%m/%Y %H:%M:%S')"` | Exibição de cabeçalho formatado utilizando os comandos `echo` e `date`. |
 | 02 | 02 Processamento de texto | Processamento de texto | 263 | `TOTAL_LINES=$(wc -l < "$OUTPUT_DOC")` | Contagem total de linhas do documento unificado utilizando o utilitário `wc -l`. |
-| 03 | 03 Sistema de arquivos | Sistema de arquivos | 1053 | `tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" ...` | Empacotamento e compressão de múltiplos arquivos em formato tarball gzip via `tar -czf`. |
+| 03 | 03 Sistema de arquivos | Sistema de arquivos | 1687 | `tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" ...` | Empacotamento e compressão de múltiplos arquivos em formato tarball gzip via `tar -czf`. |
 | 04 | 04 Permissões | Sistema de arquivos | 101 | `chmod 755 "$DIST_DIR"` | Configuração de permissões de diretório em representação octal estrita (`755`). |
-| 05 | 05 Processos | Processos | 1102 | `if ps -p "$active_pid" >/dev/null 2>&1; then` | Inspeciona a tabela de processos do sistema com `ps -p` para checar se o servidor está ativo. |
-| 06 | 06 Sinais | Processos | 1105 | `kill -15 "$active_pid" 2>/dev/null || kill -9 ...` | Envio de sinal `SIGTERM` (-15) e fallback `SIGKILL` (-9) para encerramento de processo. |
+| 05 | 05 Processos | Processos | 1736 | `if ps -p "$active_pid" >/dev/null 2>&1; then` | Inspeciona a tabela de processos do sistema com `ps -p` para checar se o servidor está ativo. |
+| 06 | 06 Sinais | Processos | 1739 | `kill -15 "$active_pid" 2>/dev/null || kill -9 ...` | Envio de sinal `SIGTERM` (-15) e fallback `SIGKILL` (-9) para encerramento de processo. |
 | 07 | 07 Redirecionamentos | Entradas, saídas e Redirecionamentos | 104 | `> "$METRICS_FILE"` | Truncamento e inicialização limpa de arquivo de métricas utilizando redirecionamento `>`. |
 | 08 | 08 Pipes ou redirecionamentos avançados | Entradas, saídas e Redirecionamentos | 118 | `ls "$DOCS_DIR"/*.md 2>/dev/null | sort -V` | Redirecionamento de erro `2>/dev/null` e pipe `|` para ordenação natural com `sort -V`. |
 | 09 | 09 Expansões | Expansões | 126 | `TOTAL_DOCS=$((TOTAL_DOCS + 1))` | Incremento de contador numérico utilizando expansão aritmética `$(( ... ))`. |
 | 10 | 10 Variáveis | Parâmetros e Variáveis | 25 | `DIST_DIR="${BASE_DIR}/dist"` | Definição de variável de ambiente de usuário para armazenar o caminho de saída. |
-| 11 | 11 Parâmetros posicionais e especiais | Parâmetros e Variáveis | 1142 | `local server_pid=$!` | Uso do parâmetro especial `$!` para capturar o PID do processo disparado em background. |
+| 11 | 11 Parâmetros posicionais e especiais | Parâmetros e Variáveis | 1776 | `local server_pid=$!` | Uso do parâmetro especial `$!` para capturar o PID do processo disparado em background. |
 | 12 | 12 Atributos de variáveis | Parâmetros e Variáveis | 17 | `readonly APP_NAME="Catalyst Shell Engine"` | Definição de variável com atributo de somente-leitura (`readonly`). |
-| 13 | 13 Expansões avançadas | Parâmetros e Variáveis | 1316 | `COMMAND="${1:-help}"` | Uso de expansão avançada com fallback de valor padrão `${1:-help}`. |
+| 13 | 13 Expansões avançadas | Parâmetros e Variáveis | 1950 | `COMMAND="${1:-help}"` | Uso de expansão avançada com fallback de valor padrão `${1:-help}`. |
 | 14 | 14 Testes condicionais com test ou if | Estruturas de fluxo condicionais | 120 | `if [ -f "$doc" ]; then` | Teste condicional verificando existência e tipo de arquivo regular com `-f`. |
-| 15 | 15 Testes condicionais com case | Estruturas de fluxo condicionais | 1319 | `case "$COMMAND" in build) ... ;; esac` | Estrutura de seleção múltipla `case` para roteamento de subcomandos da CLI. |
+| 15 | 15 Testes condicionais com case | Estruturas de fluxo condicionais | 1953 | `case "$COMMAND" in build) ... ;; esac` | Estrutura de seleção múltipla `case` para roteamento de subcomandos da CLI. |
 | 16 | 16 Outras formas de desvio | Estruturas de fluxo condicionais | 137 | `[ $TOTAL_DOCS -gt 0 ] && echo "Total de capitulos: $TOTAL_DOCS"` | Desvio condicional inline através do operador lógico `&&`. |
 | 17 | 17 Comandos ou sequenciadores | Estruturas de fluxo de repetição | 118 | `for doc in $(ls "$DOCS_DIR"/*.md 2>/dev/null | sort -V); do` | Estrutura de repetição `for` para iteração ordenada sobre a lista de arquivos Markdown. |
 | 18 | 18 Expressão regular básica ou estendida | Expressões Regulares | 244 | `grep -E -o "$link_pattern" "$OUTPUT_DOC"` | Busca por links com `grep -E -o` utilizando regex estendida com metacaracteres `\[[^]]+\]\(([^)]+)\)`. |
