@@ -450,6 +450,20 @@ generate_html_preview() {
             color: var(--accent);
             transform: translateX(3px);
         }
+        #toc-container a.active {
+            background: rgba(88, 166, 255, 0.15) !important;
+            color: var(--accent) !important;
+            border-left: 3px solid var(--accent) !important;
+            font-weight: 600 !important;
+            padding-left: 10px !important;
+            transform: translateX(4px) !important;
+            box-shadow: inset 0 0 14px rgba(88, 166, 255, 0.08);
+        }
+        body.theme-light #toc-container a.active {
+            background: rgba(9, 105, 218, 0.1) !important;
+            color: #0969da !important;
+            border-left-color: #0969da !important;
+        }
         main {
             flex: 1;
             padding: 48px 56px;
@@ -1276,6 +1290,9 @@ generate_html_preview() {
                         setTimeout(() => initialTarget.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
                     }
                 }
+
+                // Inicializa o ScrollSpy apos carga do documento
+                setTimeout(initScrollSpy, 350);
             })
             .catch(err => {
                 document.getElementById('doc-render').innerHTML = '<p>Erro ao carregar documento: ' + err + '</p>';
@@ -1332,6 +1349,79 @@ generate_html_preview() {
                 }
             }
         });
+
+        // =========================================================================
+        // SCROLLSPY INTELIGENTE: Destaque de secao ativa no sumario
+        // =========================================================================
+        function initScrollSpy() {
+            const headings = Array.from(document.querySelectorAll('#doc-render h1, #doc-render h2, #doc-render h3'));
+            const tocLinks = Array.from(document.querySelectorAll('#toc-container a'));
+            if (!headings.length || !tocLinks.length) return;
+
+            const linkMap = new Map();
+            tocLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && href.startsWith('#')) {
+                    const id = href.substring(1).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                    linkMap.set(id, link);
+                }
+            });
+
+            let currentActiveId = null;
+            let isTicking = false;
+
+            function updateActiveHeading() {
+                isTicking = false;
+                let activeId = null;
+
+                for (let i = 0; i < headings.length; i++) {
+                    const h = headings[i];
+                    const rect = h.getBoundingClientRect();
+                    if (rect.top <= 160) {
+                        activeId = h.id;
+                    } else {
+                        break;
+                    }
+                }
+
+                const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+                if (!activeId && headings.length > 0 && scrollY < 200) {
+                    activeId = headings[0].id;
+                }
+
+                if (activeId && activeId !== currentActiveId) {
+                    currentActiveId = activeId;
+                    tocLinks.forEach(l => l.classList.remove('active'));
+                    const targetLink = linkMap.get(activeId);
+                    if (targetLink) {
+                        targetLink.classList.add('active');
+                        const sidebar = document.getElementById('sidebar');
+                        if (sidebar) {
+                            const linkRect = targetLink.getBoundingClientRect();
+                            const sidebarRect = sidebar.getBoundingClientRect();
+                            if (linkRect.top < sidebarRect.top + 60 || linkRect.bottom > sidebarRect.bottom - 60) {
+                                targetLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }
+                        }
+                    }
+                }
+            }
+
+            function requestUpdate() {
+                if (!isTicking) {
+                    isTicking = true;
+                    requestAnimationFrame(updateActiveHeading);
+                }
+            }
+
+            window.addEventListener('scroll', requestUpdate, { passive: true });
+            const mainContainer = document.querySelector('main');
+            if (mainContainer) {
+                mainContainer.addEventListener('scroll', requestUpdate, { passive: true });
+            }
+
+            updateActiveHeading();
+        }
 
         // =========================================================================
         // CATALYST DOCBOT ENGINE (Zero-Lib In-Browser Information Retrieval)
