@@ -89,6 +89,7 @@ Exemplos:
   $0 watch
   $0 serve --port 8080
   $0 serve --stop
+  $0 serve --restart
 EOF
 }
 
@@ -1178,38 +1179,77 @@ generate_html_preview() {
             }
         });
 
-        // Carrega metricas de build
-        fetch('metrics/metrics.txt')
-            .then(r => r.text())
-            .then(text => {
-                const docsMatch = text.match(/Total de Capitulos:\s*(\d+)/);
-                const linesMatch = text.match(/Total de Linhas\s*:\s*(\d+)/);
-                const wordsMatch = text.match(/Total de Palavras\s*:\s*(\d+)/);
-                if (docsMatch) document.getElementById('m-docs').innerText = docsMatch[1];
-                if (linesMatch) document.getElementById('m-lines').innerText = linesMatch[1];
-                if (wordsMatch) document.getElementById('m-words').innerText = wordsMatch[1];
-            })
-            .catch(() => {});
 
-        // Carrega Sumario
-        fetch('docs/summary.md')
-            .then(r => r.text())
-            .then(md => {
-                const lines = md.split('\n');
-                let html = '';
-                lines.forEach(line => {
-                    const match = line.match(/^\s*(\d+(\.\d+)*)\.?\s*\[([^\]]+)\]\((#[^\)]+)\)/);
-                    if (match) {
-                        const num = match[1];
-                        const title = match[3];
-                        const anchor = match[4];
-                        const indent = match[0].search(/\S/) * 4;
-                        html += `<a href="${anchor}" style="margin-left: ${indent}px;">${num} ${title}</a>`;
+        // Substitua os 3 blocos fetch soltos por esta execucao sequencial:
+        async function loadAppSequentially() {
+            try {
+                // 1. Metricas
+                const rMetrics = await fetch('metrics/metrics.txt');
+                if (rMetrics.ok) {
+                    const text = await rMetrics.text();
+                    const docsMatch = text.match(/Total de Capitulos:\s*(\d+)/);
+                    const linesMatch = text.match(/Total de Linhas\s*:\s*(\d+)/);
+                    const wordsMatch = text.match(/Total de Palavras\s*:\s*(\d+)/);
+                    if (docsMatch) document.getElementById('m-docs').innerText = docsMatch[1];
+                    if (linesMatch) document.getElementById('m-lines').innerText = linesMatch[1];
+                    if (wordsMatch) document.getElementById('m-words').innerText = wordsMatch[1];
+                }
+
+                // 2. Sumario (TOC)
+                const rToc = await fetch('docs/summary.md');
+                if (rToc.ok) {
+                    const md = await rToc.text();
+                    const lines = md.split('\n');
+                    let html = '';
+                    lines.forEach(line => {
+                        const match = line.match(/^\s*(\d+(\.\d+)*)\.?\s*\[([^\]]+)\]\((#[^\)]+)\)/);
+                        if (match) {
+                            const num = match[1];
+                            const title = match[3];
+                            const anchor = match[4];
+                            const indent = match[0].search(/\S/) * 4;
+                            html += `<a href="${anchor}" style="margin-left: ${indent}px;">${num} ${title}</a>`;
+                        }
+                    });
+                    document.getElementById('toc-container').innerHTML = html || '<p style="color:var(--text-muted);font-size:0.85rem;">Sumário indisponível</p>';
+                }
+
+                // 3. Documento Completo
+                const rDoc = await fetch('docs/full-document.md');
+                if (rDoc.ok) {
+                    const md = await rDoc.text();
+                    let cleanMd = md.replace(/^---[\r\n]+[\s\S]*?[\r\n]+---\s*/, '');
+                    if (window.marked) {
+                        document.getElementById('doc-render').innerHTML = marked.parse(cleanMd);
                     }
-                });
-                document.getElementById('toc-container').innerHTML = html || '<p style="color:var(--text-muted);font-size:0.85rem;">Sumário indisponível</p>';
-            })
-            .catch(() => {});
+                    if (window.mermaid) {
+                        try {
+                            const isLight = document.body.classList.contains('theme-light');
+                            mermaid.initialize({ startOnLoad: false, theme: isLight ? 'default' : 'dark', securityLevel: 'loose' });
+                            const mermaidBlocks = document.querySelectorAll('#doc-render pre code.language-mermaid, #doc-render pre code.lang-mermaid');
+                            for (let i = 0; i < mermaidBlocks.length; i++) {
+                                const codeBlock = mermaidBlocks[i];
+                                const preBlock = codeBlock.closest('pre');
+                                const diagId = 'mermaid-svg-' + i;
+                                const { svg } = await mermaid.render(diagId, codeBlock.textContent.trim());
+                                const container = document.createElement('div');
+                                container.className = 'mermaid-container';
+                                container.innerHTML = svg;
+                                preBlock.parentNode.replaceChild(container, preBlock);
+                            }
+                        } catch (mErr) {}
+                    }
+                    document.querySelectorAll('#doc-render h1, #doc-render h2, #doc-render h3').forEach(el => {
+                        el.id = el.innerText.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                    });
+                    setTimeout(initScrollSpy, 250);
+                }
+            } catch (e) {
+                console.error("Erro no carregamento sequencial:", e);
+            }
+        }
+
+        loadAppSequentially();
 
         // Busca instantanea no sumario
         const searchInput = document.getElementById('doc-search');
@@ -1225,78 +1265,6 @@ generate_html_preview() {
                 }
             });
         });
-
-        // Carrega Documento com Renderizador Markdown (Marked ou fallback)
-        fetch('docs/full-document.md')
-            .then(r => r.text())
-            .then(async md => {
-                let cleanMd = md.replace(/^---[\r\n]+[\s\S]*?[\r\n]+---\s*/, '');
-                if (window.marked) {
-                    document.getElementById('doc-render').innerHTML = marked.parse(cleanMd);
-                } else {
-                    let h = cleanMd
-                        .replace(/^### (.*$)/gim, '<h3 id="$1">$1</h3>')
-                        .replace(/^## (.*$)/gim, '<h2 id="$1">$1</h2>')
-                        .replace(/^# (.*$)/gim, '<h1 id="$1">$1</h1>')
-                        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-                        .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-                        .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>')
-                        .replace(/\n\n/gim, '</p><p>');
-                    document.getElementById('doc-render').innerHTML = `<p>${h}</p>`;
-                }
-
-                // Renderizacao de diagramas Mermaid
-                if (window.mermaid) {
-                    try {
-                        const isLight = document.body.classList.contains('theme-light');
-                        mermaid.initialize({
-                            startOnLoad: false,
-                            theme: isLight ? 'default' : 'dark',
-                            securityLevel: 'loose'
-                        });
-                        const mermaidBlocks = document.querySelectorAll('#doc-render pre code.language-mermaid, #doc-render pre code.lang-mermaid');
-                        for (let i = 0; i < mermaidBlocks.length; i++) {
-                            const codeBlock = mermaidBlocks[i];
-                            const preBlock = codeBlock.closest('pre');
-                            const diagramCode = codeBlock.textContent.trim();
-                            const container = document.createElement('div');
-                            container.className = 'mermaid-container';
-                            const diagId = 'mermaid-svg-' + i;
-                            try {
-                                const { svg } = await mermaid.render(diagId, diagramCode);
-                                container.innerHTML = svg;
-                                preBlock.parentNode.replaceChild(container, preBlock);
-                            } catch (renderError) {
-                                console.warn('Erro ao renderizar diagrama Mermaid:', renderError);
-                            }
-                        }
-                    } catch (mErr) {
-                        console.warn('Erro ao inicializar Mermaid:', mErr);
-                    }
-                }
-
-                // Vincula IDs correspondentes para as ancoras do sumario AWK funcionarem perfeitamente
-                document.querySelectorAll('#doc-render h1, #doc-render h2, #doc-render h3').forEach(el => {
-                    const cleanId = el.innerText.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                    el.id = cleanId;
-                });
-
-                // Se a URL contiver uma ancora no carregamento inicial, rola suavemente ate ela
-                if (window.location.hash) {
-                    const hash = window.location.hash.substring(1);
-                    const normalized = hash.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                    const initialTarget = document.getElementById(hash) || document.getElementById(normalized);
-                    if (initialTarget) {
-                        setTimeout(() => initialTarget.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
-                    }
-                }
-
-                // Inicializa o ScrollSpy apos carga do documento
-                setTimeout(initScrollSpy, 350);
-            })
-            .catch(err => {
-                document.getElementById('doc-render').innerHTML = '<p>Erro ao carregar documento: ' + err + '</p>';
-            });
 
         // Interceptador Inteligente de Links: Resolve referencias entre capitulos com ancoras internas
         document.addEventListener('click', (e) => {
@@ -1800,11 +1768,18 @@ package_release() {
 # ==============================================================================
 manage_server() {
     local action="start"
-    local port="8000"
+    local port=""
 
     # Processa argumentos e flags flexiveis (Conceitos 11, 14, 15, 17)
+    # Conceito 11: parametros posicionais ($1, $#)
+    # Conceito 14: teste condicional com [ ]
+    # Conceito 15: estrutura case para selecionar a opcao recebida
+    # Conceito 17: repeticao com while
     while [ $# -gt 0 ]; do
         case "$1" in
+            --restart|restart)
+                action="restart"
+                ;;
             --stop|stop)
                 action="stop"
                 ;;
@@ -1815,65 +1790,40 @@ manage_server() {
             [0-9]*)
                 port="$1"
                 ;;
+            *)
+                echo "Opcao desconhecida: $1" >&2
+                return 1
+                ;;
         esac
+
+        # Desloca os parametros posicionais para processar o proximo argumento.
         shift
     done
 
-    if [ "$action" = "--stop" ] || [ "$action" = "stop" ]; then
-        local killed=false
+    # Define o caminho do modulo responsavel pelo ciclo de vida do servidor.
+    local server_script="$SCRIPTS_DIR/core/server.sh"
 
-        if [ -f "$PID_SERVER_FILE" ]; then
-            local active_pid
-            active_pid=$(cat "$PID_SERVER_FILE")
-
-            # Inspeciona processos ativos com ps (Conceito 05)
-            if ps -p "$active_pid" >/dev/null 2>&1; then
-                echo "Encerrando servidor com PID $active_pid..."
-                # Envio de sinais kill (Conceito 06)
-                kill -15 "$active_pid" 2>/dev/null || kill -9 "$active_pid" 2>/dev/null
-                killed=true
-            fi
-            rm -f "$PID_SERVER_FILE"
-        fi
-
-        # Para WSL e processos orfaos na porta: usa fuser (Conceito 03) ou pkill
-        if command -v fuser &>/dev/null; then
-            fuser -k "${port}/tcp" >/dev/null 2>&1 && killed=true || true
-        fi
-        pkill -f "http.server.*${port}" 2>/dev/null && killed=true || true
-
-        if [ "$killed" = true ]; then
-            echo "Servidor de preview encerrado com sucesso."
-        else
-            echo "Nenhum servidor ativo localizado para encerramento."
-        fi
-    else
-        # Se ja estiver rodando na porta, avisa
-        if command -v fuser &>/dev/null && fuser "${port}/tcp" >/dev/null 2>&1; then
-            echo "A porta $port ja possui um processo ativo. Use '$0 serve --stop' para encerrar."
-            return 0
-        fi
-
-        echo "Iniciando servidor de preview na porta $port..."
-        
-        # Executa python http.server diretamente em background (sem subshell), capturando $! (Conceito 11)
-        if command -v python3 &>/dev/null; then
-            python3 -m http.server -d "$DIST_DIR" "$port" >/dev/null 2>&1 &
-        elif command -v python &>/dev/null; then
-            python -m http.server -d "$DIST_DIR" "$port" >/dev/null 2>&1 &
-        else
-            echo "Interpretador python3 necessario para servidor de preview." >&2
-            return 1
-        fi
-
-        # Parametro especial $!: PID do processo colocado em background (Conceito 11)
-        local server_pid=$!
-        echo "$server_pid" > "$PID_SERVER_FILE"
-        echo "Servidor rodando em background com PID $server_pid em http://localhost:$port"
-        
-        # Mostra jobs em background (Conceito 05)
-        jobs -l 2>/dev/null || true
+    # Verifica se o arquivo externo existe (Conceito 14).
+    if [ ! -f "$server_script" ]; then
+        echo "Erro: servidor nao encontrado: $server_script" >&2
+        return 1
     fi
+
+    # Seleciona a operacao solicitada usando case (Conceito 15).
+    case "$action" in
+        start)
+            # Executa o modulo externo do servidor passando parametros posicionais.
+            bash "$server_script" start "$DIST_DIR" "${port:-8000}"
+            ;;
+        restart)
+            # Executa o modulo externo para reiniciar o servidor.
+            bash "$server_script" restart "$DIST_DIR" "$port"
+            ;;
+        stop)
+            # Executa o modulo externo para encerrar o servidor.
+            bash "$server_script" stop "$DIST_DIR" "$port"
+            ;;
+    esac
 }
 
 # ==============================================================================
