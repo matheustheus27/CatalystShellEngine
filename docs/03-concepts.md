@@ -144,52 +144,34 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
   * `continue`: Salto de iterações em linhas vazias detectadas durante a auditoria.
 
 ### 18. Expressões Regulares Básicas e Estendidas (Aula: Expressões Regulares)
-- **Conceitos**: `grep` e `egrep` / `grep -E` utilizando metacaracteres obrigatórios
-- **Aplicação no Projeto**:
-  * Expressão regular estendida com metacaracteres `^`, `!`, `\[`, `\]`, `+`, `(`, `)`:
-    `grep -E -o '\[[^]]+\]\(([^)]+)\)' "$OUTPUT_DOC"`
-  * Extração e auditoria rigorosa de todas as referências a links e imagens locais.
+- **Aplicação no Projeto**: `grep -E '^ERROR[[:space:]]'` identifica registros de
+  erro produzidos pelo compilador. A expressão usa o metacaractere de início de
+  linha e uma classe POSIX. A resolução estrutural dos links fica no GNU AWK.
 
 ### 19. Programa em Sed (Aula: sed)
-- **Conceitos**: Comandos de edição, substituição e scripts com expressões regulares
 - **Aplicação no Projeto**:
-  * Higienização e normalização léxica de todos os documentos unificados:
-    ```bash
-    sed -E \
-        -e 's/[ \t]+$//' \
-        -e 's/^(#+)[ \t]+/\1 /' \
-        "$temp_concat" > "$OUTPUT_DOC"
-    ```
-  * Remoção de espaços finais de linha e garantia de espaçamento padronizado em títulos Markdown.
+
+```bash
+sed -e 's/\r$//' "$input_file" > "$output_file"
+```
+
+O programa normaliza CRLF preservando espaços significativos, indentação e cercas.
+Não remove hard breaks nem altera exemplos de código.
 
 ### 20. Programa em AWK (Aula: AWK)
-- **Conceitos**: Blocos `BEGIN`, padrões condicionais, variáveis associativas e formatação de saída
-- **Aplicação no Projeto**:
-  * Motor analítico completo de geração de sumário (TOC):
-    ```awk
-    BEGIN {
-        h1 = 0; h2 = 0; h3 = 0;
-    }
-    /^# [^#]/ {
-        h1++; h2 = 0; h3 = 0;
-        title = substr($0, 3);
-        anchor = tolower(title);
-        gsub(/[^a-z0-9_-]/, "", anchor);
-        printf("%d. [%s](#%s)\n", h1, title, anchor);
-    }
-    /^## [^#]/ {
-        h2++; h3 = 0;
-        title = substr($0, 4);
-        anchor = tolower(title);
-        gsub(/[^a-z0-9_-]/, "", anchor);
-        printf("   %d.%d. [%s](#%s)\n", h1, h2, title, anchor);
-    }
-    /^### [^#]/ {
-        h3++;
-        title = substr($0, 5);
-        anchor = tolower(title);
-        gsub(/[^a-z0-9_-]/, "", anchor);
-        printf("      %d.%d.%d. [%s](#%s)\n", h1, h2, h3, title, anchor);
-    }
-    ```
-  * Identificação de níveis de títulos, cálculo autônomo da numeração decimal hierárquica e conversão para âncoras navegáveis consistentes com a interface HTML gerada.
+- **Aplicação no Projeto**: `scripts/core/markdown.awk` indexa os fontes, diferencia
+  texto de código, calcula IDs únicos e resolve referências no escopo do capítulo.
+  `scripts/core/toc.awk` utiliza esse índice para gerar o sumário e o JSON consumido
+  pela interface. Arrays associativos mantêm os IDs ocupados e os destinos locais.
+
+```awk
+function allocate(base, scope,    id,n) {
+    id=base; n=0
+    while ((scope SUBSEP id) in occupied) id=base "-" ++n
+    occupied[scope SUBSEP id]=1
+    return id
+}
+```
+
+A mesma numeração é usada na publicação e na navegação; o navegador não recalcula
+slugs com um algoritmo diferente. A planilha do relatório indica as linhas atuais.

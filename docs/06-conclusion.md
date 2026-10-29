@@ -15,12 +15,12 @@ O PDF acadêmico é exportado por uma ferramenta Python opcional, separada do n�
 
 ## Limites atuais
 
-- O preview HTTP é sequencial e destinado a desenvolvimento local.
+- O preview Bash é sequencial; o backend Python concorrente é opcional. Ambos são locais.
 - O parser cobre um subconjunto de Markdown; não implementa toda a especificação.
-- As âncoras seguem a convenção da interface, que remove espaços e acentos; títulos
-  repetidos ainda precisam de identificadores únicos em uma evolução futura.
-- A interface depende de bibliotecas em CDN. O HTML dos capítulos é considerado
-  confiável; conteúdo recebido de terceiros exige sanitização antes da renderização.
+- IDs são únicos e normalizados para ASCII. Containers Markdown profundamente
+  aninhados e toda a extensão de CommonMark ainda não são cobertos pelo compilador.
+- A interface é offline e sanitizada. Novas versões das bibliotecas precisam ser
+  incorporadas explicitamente, com revisão dos checksums e das licenças.
 - No DrvFS do WSL, leitores externos que ignoram `publish.lock` podem observar
   arquivos de gerações diferentes durante o commit; use filesystem Linux para
   a troca atômica do snapshot inteiro.
@@ -36,19 +36,17 @@ O PDF acadêmico é exportado por uma ferramenta Python opcional, separada do n�
 - Testes para dois escritores, interrupções, falha durante o commit, recuperação
   de journal e preview acompanhando novas gerações.
 
+- Parser com IDs únicos, títulos H1–H6/Setext, cercas por comprimento, referências
+  locais por capítulo e validação de fragmentos.
+- Bundles locais de Marked, DOMPurify e Mermaid, com integridade verificada e CSP.
+- Backend concorrente opcional, com limite de conexões, timeout e publicação coordenada.
+
 ## Implementações recomendadas para maior robustez
 
-1. **Parser Markdown mais completo**: tratar títulos repetidos, cercas de tamanhos
-   variados, links de referência, caminhos relativos por capítulo e fragmentos de
-   arquivos locais com uma convenção única de identificadores.
-2. **Interface autossuficiente e sanitizada**: fixar e distribuir dependências locais,
-   aplicar sanitização de HTML e uma política CSP compatível com a interface.
-3. **Validação externa opcional**: verificar URLs por curl com timeout, limite de
+1. **Validação externa opcional**: verificar URLs por curl com timeout, limite de
    concorrência, cache e tratamento explícito de redirecionamentos e erros de rede.
-4. **Releases reproduzíveis**: normalizar timestamps e metadados do tar, produzir
+2. **Releases reproduzíveis**: normalizar timestamps e metadados do tar, produzir
    manifesto de fontes e separar checksums de assinaturas digitais verificáveis.
-5. **Observação mais precisa**: usar inotify quando disponível, debounce e monitorar
+3. **Observação mais precisa**: usar inotify quando disponível, debounce e monitorar
    também ativos, templates e alterações nos scripts, com fallback por checksum.
-6. **Preview concorrente opcional**: oferecer integração com um servidor estático
-   apropriado para múltiplas conexões, mantendo o preview Bash como demonstração.
-7. **Testes de isolamento e falhas**: ampliar a cobertura para falta de dependências, disco cheio e documentos muito grandes.
+4. **Testes de isolamento e falhas**: ampliar a cobertura para falta de dependências, disco cheio e documentos muito grandes.

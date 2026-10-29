@@ -28,7 +28,13 @@ jobs:
       - name: Instalar ferramentas
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc shellcheck
+          sudo apt-get install -y bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc shellcheck python3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.2'
+          package-manager-cache: false
+      - name: Dependencias dos testes da interface
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Registrar ambiente
         run: |
           bash --version

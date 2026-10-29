@@ -2,14 +2,19 @@
             USE_PROFILES: { html: true },
             ALLOW_DATA_ATTR: false,
             ADD_ATTR: ['data-catalyst-token'],
-            FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'iframe', 'object', 'embed', 'source'],
-            FORBID_ATTR: ['id', 'name', 'style', 'srcdoc', 'srcset'],
+            FORBID_TAGS: ['style', 'link', 'meta', 'base', 'form', 'input', 'button', 'textarea', 'select', 'iframe', 'object', 'embed', 'source'],
+            FORBID_ATTR: ['id', 'name', 'style', 'srcdoc', 'srcset', 'poster', 'background'],
         };
         function safeHTML(html) {
             const fragment = DOMPurify.sanitize(html, { ...htmlPolicy, RETURN_DOM_FRAGMENT: true });
             fragment.querySelectorAll('[src]').forEach(node => {
                 const source = node.getAttribute('src') || '';
-                if (/^(?:https?:)?\/\//i.test(source) || /^data:(?!image\/(?:png|jpeg|gif|webp);)/i.test(source)) node.removeAttribute('src');
+                if (!/^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(source)) {
+                    try {
+                        const parsed = new URL(source, document.baseURI);
+                        if (parsed.origin !== location.origin || !/^https?:$/.test(parsed.protocol)) node.removeAttribute('src');
+                    } catch { node.removeAttribute('src'); }
+                }
             });
             const wrapper = document.createElement('div');
             wrapper.appendChild(fragment);
@@ -86,8 +91,8 @@
                         return `<h${depth} data-catalyst-token="${nonce}-${headingIndex++}">${this.parser.parseInline(tokens)}</h${depth}>`;
                     };
                     renderer.html = function({text}) {
-                        return text.replace(/<a id="(chapter-[a-z0-9_-]+)"><\/a>/g, (original, id) =>
-                            chapters.has(id) ? `<a data-catalyst-token="${nonce}-chapter-${id}"></a>` : original);
+                        return text.replace(/<a id="(chapter-[a-z0-9_-]+)">/g, (original, id) =>
+                            chapters.has(id) ? `<a data-catalyst-token="${nonce}-chapter-${id}">` : original);
                     };
                     const rendered = document.getElementById('doc-render');
                     rendered.innerHTML = safeHTML(marked.parse(md, { renderer }));

@@ -16,7 +16,7 @@ generate_html_preview() {
     while IFS=$'\t' read -r kind file line target destination; do
         [ "$kind" = ASSET ] || continue
         source=$(realpath -e "$base_dir/$target")
-        [[ "$source" == "$base_dir/"* ]] || { echo 'Ativo fora do projeto.' >&2; return 1; }
+        [[ "$source" == "$base_dir/"* ]] || { echo "Ativo fora do projeto: $file:$line: $target" >&2; return 1; }
         mkdir -p "$(dirname "$dist_dir/$destination")"
         cp -- "$source" "$dist_dir/$destination"
     done < "$dist_dir/docs/links.tsv"

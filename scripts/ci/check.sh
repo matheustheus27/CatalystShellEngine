@@ -8,8 +8,13 @@ mapfile -d '' -t scripts < <(find scripts -type f \( -name '*.sh' -o -name '*.ba
 scripts=(catalyst.sh "${scripts[@]}")
 for script in "${scripts[@]}"; do bash -n "$script"; done
 shellcheck --external-sources --severity=style "${scripts[@]}"
+gawk -v mode=index -v chapter_list=/dev/null -v file_list=/dev/null -f scripts/core/markdown.awk /dev/null
+gawk -v json=/dev/null -f scripts/core/toc.awk /dev/null >/dev/null
+node --check templates/app.js
+python3 -m py_compile scripts/core/server-threaded.py scripts/tests/http_backends.py
 bash catalyst.sh test
 bash catalyst.sh all
 bash catalyst.sh report
 bash catalyst.sh pack
 (cd dist/releases && sha256sum -c ./*.sha256)
+npm test -- --project

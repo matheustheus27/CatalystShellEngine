@@ -24,7 +24,7 @@ flowchart TD
     subgraph PROCESSING ["2. Processamento Léxico & Parsing"]
         C --> D["🧹 sed Sanitizer (Higienização)"]
         D --> E["📄 dist/docs/full-document.md"]
-        E --> F["📑 awk TOC Engine (Sumário 3 Níveis)"]
+        E --> F["📑 awk TOC Engine (Sumário H1-H6)"]
         F --> G["📄 dist/docs/summary.md"]
     end
 
@@ -66,25 +66,22 @@ flowchart TD
 - Definição de permissões octais estritas (`chmod 755 "$DIST_DIR"`).
 - Criação do arquivo de métricas sem truncar resultados de subcomandos anteriores (`touch "$METRICS_FILE"`).
 
-### Estágio 2: Consolidação e Sanitização Léxica (`consolidate_documents`)
-- Varredura determinística de todos os capítulos via `sort -V` (ordenação natural que preserva a sequência `00`, `01`, `02`... `10`).
-- Concatenação limpa com injeção de comentários semânticos (`<!-- Capitulo: ... -->`).
-- Pipeline em **`sed -E`**:
-  * Remoção cirúrgica de espaços e tabulações no final de linhas (`s/[ \t]+$//`).
-  * Normalização do espaçamento de cabeçalhos Markdown, garantindo exatamente um espaço após a sequência de `#` (`s/^(#+)[ \t]+/\1 /`).
+### Estágio 2: Índice e Consolidação (`consolidate_documents`)
+- Descobre capítulos recursivamente com `find -print0` e `sort -zV`.
+- GNU AWK indexa títulos H1–H6, Setext e definições de referência antes da reescrita.
+- Links entre capítulos são convertidos para IDs globais únicos; referências de
+  ativos são resolvidas a partir do arquivo de origem e registradas no manifesto.
+- O programa sed normaliza CRLF sem alterar a indentação ou os hard breaks.
 
-### Estágio 3: Extração de Sumário Hierárquico via AWK (`generate_toc`)
-- O processamento de cabeçalhos Markdown é delegado a um programa completo em **AWK**:
-  * Mantém acumuladores numéricos independentes para níveis H1, H2 e H3 (`h1`, `h2`, `h3`).
-  * Gera numeração sequencial formatada (ex: `1.`, `1.1.`, `1.1.1.`).
-  * Constrói âncoras (*slugs*) limpando caracteres especiais (`gsub(/[^a-z0-9_-]/, "", anchor)`).
-  * Constrói âncoras (*slugs*) limpando caracteres especiais (`gsub(/[^a-z0-9_-]/, "", anchor)`).
-  * Produz o arquivo `dist/docs/summary.md` com recuos proporcionais para navegação em árvore.
+### Estágio 3: Sumário (`generate_toc`)
+- `toc.awk` mantém contadores por nível e utiliza os IDs já calculados pelo índice.
+- Gera `summary.md` e `headings.json`, evitando divergência entre CLI e navegador.
+- Cercas respeitam seu caractere e comprimento; exemplos de código não viram títulos.
 
-### Estágio 4: Auditoria de Links e Imagens com Expressões Regulares (`validate_assets_and_links`)
-- Varre o documento unificado utilizando **`grep -E -o '\[[^]]+\]\(([^)]+)\)'`**.
-- Filtra links externos (`http://`, `https://`) e âncoras locais (`#`), isolando referências a caminhos de arquivos relativos.
-- Testa a existência de cada ativo local referenciado (`[ -f "$target" ] || [ -d "$target" ]`), retornando erro quando encontra referências quebradas. Âncoras do documento também são verificadas; exemplos em blocos e trechos de código são ignorados.
+### Estágio 4: Auditoria (`validate_assets_and_links`)
+- `grep -E '^ERROR[[:space:]]'` detecta diagnósticos de arquivo, referência ou fragmento.
+- Ativos são conferidos por caminho canônico para impedir cópia fora do projeto.
+- Qualquer erro interrompe a transação e preserva a publicação anterior.
 
 ### Estágio 5: Cálculo Estatístico de Métricas e Integridade (`compute_statistics`)
 - Extração de métricas quantitativas de volume utilizando `wc -l` (linhas) e `wc -w` (palavras).
@@ -94,7 +91,7 @@ flowchart TD
 ### Estágio 6: Geração de Interface Web Interativa com ChatBot (`generate_html_preview`)
 - Criação autônoma do arquivo `dist/index.html` (único arquivo na raiz de distribuição).
 - Interface moderna inspirada no sistema de design **GlassHub Quasar** (vidro fosco, tema escuro, variáveis CSS HSL, painel lateral responsivo e renderizador Markdown dinâmico com fallback).
-- **Catalyst DocBot (Assistente Virtual Integrado)**: Motor local de recuperação de informação em Vanilla JS; as bibliotecas de renderização são carregadas por CDN, com busca por seções, deep linking, botões de ação e comandos de terminal (`/help`, `/conceitos`, `/stats`, `/benchmark`).
+- **Catalyst DocBot (Assistente Virtual Integrado)**: Motor local de recuperação de informação em Vanilla JS; as bibliotecas são distribuídas em `vendor/` e copiadas para `dist/ui/vendor/`, com busca por seções, deep linking, botões de ação e comandos de terminal (`/help`, `/conceitos`, `/stats`, `/benchmark`).
 
 ### Estágio 7: Empacotamento e Certificação de Release (`package_release`)
 - Compactação e compressão gzip de todos os artefatos gerados (`tar -czf`).
@@ -134,7 +131,7 @@ CatalystShellEngine/
 └── CEFET_REPORT.md           # Relatório acadêmico oficial com planilha de conformidade
 ```
 
-O orquestrador carrega os módulos de parser, sanitizer, validator, packager, preview, transação e completion; executa o servidor e o gerador acadêmico como processos externos. O HTML está em `templates/index.html`. A interface usa uma convenção própria de âncoras, distinta da convenção do GitHub.
+O orquestrador carrega os módulos de parser, sanitizer, validator, packager, preview, transação e completion; executa o servidor e o gerador acadêmico como processos externos. O HTML, CSS e JavaScript estão separados em `templates/`. A interface usa uma convenção própria de âncoras, distinta da convenção do GitHub.
 
 
 ## Staging, bloqueios e publicação
@@ -156,3 +153,19 @@ leitores externos podem observar arquivos de versões diferentes durante o commi
 O preview resolve a geração a cada requisição, para acompanhar builds novos sem
 reiniciar o processo. `watch` adquire o lock apenas em cada build; não o retém
 enquanto aguarda alterações.
+
+
+## Índice Markdown e fronteira de renderização
+
+`markdown.awk` indexa os capítulos antes de reescrever links, para resolver destinos
+que aparecem em arquivos posteriores. IDs locais são mapeados para IDs globais
+únicos. Referências são expandidas no escopo do capítulo. `toc.awk` gera o sumário
+e `headings.json` a partir dos mesmos registros, sem outro algoritmo de slug no
+navegador. `links.tsv` registra erros e os ativos a copiar para a publicação.
+
+A sanitização remove scripts, formulários, eventos, IDs e atributos perigosos do
+HTML. O renderizador atribui IDs somente aos títulos marcados por tokens efêmeros
+e pelo índice confiável do compilador, evitando colisão com os controles da página.
+Diagramas Mermaid usam configuração estrita e passam por sanitização SVG separada.
+O servidor concorrente utiliza threads e adquire o mesmo flock por resposta; a
+recuperação de journal continua centralizada no módulo de transações.

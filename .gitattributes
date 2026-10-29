@@ -3,3 +3,10 @@
 *.bash text eol=lf
 *.py text eol=lf
 *.md text eol=lf
+*.awk text eol=lf
+*.js text eol=lf
+*.cjs text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+/vendor/** -text

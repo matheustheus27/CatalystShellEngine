@@ -74,11 +74,14 @@ respond() (
             *.png) type='image/png' ;;
         esac
     fi
-    local size
+    local size response_policy="$POLICY"
+    if [[ "$file" == "$root/assets/"* ]]; then
+        response_policy="sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+    fi
     if [ "$status" = '200 OK' ]; then size=$(wc -c < "$file"); else
         type='text/plain; charset=utf-8'; size=${#body}
     fi
-    printf 'HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %s\r\nConnection: close\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nContent-Security-Policy: %s\r\n\r\n' "$status" "$type" "$size" "$POLICY"
+    printf 'HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %s\r\nConnection: close\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nContent-Security-Policy: %s\r\n\r\n' "$status" "$type" "$size" "$response_policy"
     if [ "$method" != HEAD ]; then
         if [ "$status" = '200 OK' ]; then cat "$file"; else printf '%s' "$body"; fi
     fi

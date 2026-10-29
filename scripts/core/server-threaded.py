@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import fcntl
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import mimetypes
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -57,27 +58,30 @@ def run(directory: str, state: str, port: int, lifecycle: str):
             super().setup()
             self.connection.settimeout(8)
 
-        def headers(self, code, size, mime):
+        def send_file_headers(self, code, size, mime):
             self.send_response(code)
             self.send_header('Content-Type', mime)
             self.send_header('Content-Length', str(size))
             self.send_header('Cache-Control', 'no-cache')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
-            self.send_header('Content-Security-Policy', policy)
+            self.send_header('Content-Security-Policy', self.response_policy)
             self.end_headers()
 
         def fail(self, code, message):
             body = message.encode()
-            self.headers(code, len(body), 'text/plain; charset=utf-8')
+            self.send_file_headers(code, len(body), 'text/plain; charset=utf-8')
             if self.command != 'HEAD':
                 self.wfile.write(body)
 
         def do_GET(self):
+            self.response_policy = policy
             parsed = urlsplit(self.path)
             try:
                 target = unquote(parsed.path, errors='strict')
             except (UnicodeError, ValueError):
+                return self.fail(400, 'URL invalida')
+            if re.search(r'%(?![a-fA-F0-9]{2})', parsed.path):
                 return self.fail(400, 'URL invalida')
             if parsed.scheme or parsed.netloc or any(c in target for c in ('\0', '\r', '\n', '\\')):
                 return self.fail(400, 'URL invalida')
@@ -87,11 +91,13 @@ def run(directory: str, state: str, port: int, lifecycle: str):
                     return self.fail(403, 'Acesso negado')
                 if not file.is_file():
                     return self.fail(404, 'Arquivo nao encontrado')
+                if file.is_relative_to(root / 'assets'):
+                    self.response_policy = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:"
                 mime = mimetypes.guess_type(file)[0] or 'application/octet-stream'
                 if file.suffix in ('.js', '.mjs'):
                     mime = 'application/javascript'
                 with file.open('rb') as stream:
-                    self.headers(200, file.stat().st_size, mime)
+                    self.send_file_headers(200, file.stat().st_size, mime)
                     if self.command != 'HEAD':
                         shutil.copyfileobj(stream, self.wfile)
 
@@ -99,6 +105,7 @@ def run(directory: str, state: str, port: int, lifecycle: str):
             return self.do_GET()
 
         def do_POST(self):
+            self.response_policy = policy
             self.close_connection = True
             return self.fail(405, 'Metodo nao permitido')
 

@@ -18,8 +18,8 @@ O **Catalyst Shell Engine** resolve o problema real de fragmentação de documen
 
 ### 🚀 Funcionalidades Principais
 1. **Consolidação Inteligente**: Agrupa capítulos Markdown em `docs/` em ordem natural (`sort -V`).
-2. **Sumário Hierárquico Indexado (TOC)**: Motor em **AWK** que identifica cabeçalhos (`#`, `##`, `###`), ignora blocos de código, atribui numeração sequencial (`1.`, `1.1.`, `1.1.1.`) e gera âncoras navegáveis consistentes com a interface HTML gerada.
-3. **Higienização Léxica**: Remoção de espaços em branco residuais e normalização de cabeçalhos via **sed**.
+2. **Sumário Hierárquico Indexado (TOC)**: Motor em **AWK** que identifica cabeçalhos (`#`, `##`, `###`), ignora blocos de código, atribui numeração sequencial (`1.`, `1.1.`, `1.1.1.`) e gera IDs únicos para títulos repetidos, reconhece seis níveis e títulos Setext, e mantém o sumário consistente com a interface.
+3. **Normalização segura**: Conversão de CRLF com **sed**, preservando indentação, cercas e quebras significativas do Markdown.
 4. **Auditoria de Links e Ativos**: Auditoria com Expressões Regulares (`grep -E -o`) para verificar a integridade de links internos e referências de imagens.
 5. **Métricas e Telemetria**: Contagem de palavras e linhas com `wc`, extração de amostras com `head`/`tail`, e geração de checksums SHA-256 e MD5 de compatibilidade.
 6. **Empacotamento de Release**: Geração automatizada de tarball compactado (`.tar.gz`) com permissões rigorosas de acesso (`chmod 755` e `chmod u=rw,go=r`).
@@ -194,7 +194,7 @@ saída real do `cloc`. A dependência opcional Python/ReportLab e a configuraç�
 A CLI em `catalyst.sh` carrega os módulos de parser, sanitização, validação,
 empacotamento, preview, transação e configuração de completion. O servidor é
 executado como módulo externo. A interface HTML/CSS/JavaScript fica em
-`templates/index.html`. Cada responsabilidade possui uma única implementação.
+`templates/index.html`, `templates/app.css` e `templates/app.js`. Cada responsabilidade possui uma única implementação.
 
 Melhorias futuras e limites estão no [capítulo de conclusão](docs/06-conclusion.md).
 
@@ -229,6 +229,51 @@ de integração, HTTP, concorrência, interrupções e rollback, e guarda os art
 Para executar as mesmas verificações localmente:
 
 ```bash
-sudo apt install -y shellcheck
+sudo apt install -y shellcheck python3
+# Para os testes da interface: Node.js 24.22.2 (somente desenvolvimento).
+npm ci --ignore-scripts --no-audit --no-fund
 bash scripts/ci/check.sh
 ```
+
+
+## Markdown, interface offline e preview concorrente
+
+O compilador GNU AWK faz uma passagem de índice antes da reescrita. Ele reconhece
+títulos ATX de H1 a H6 e Setext, gera IDs ASCII com sufixos para repetições, respeita
+o tipo e comprimento das cercas de código e expande links de referência por capítulo.
+Capítulos podem estar em subdiretórios de `docs/`; caminhos relativos e fragmentos
+são resolvidos a partir do arquivo de origem. Ativos referenciados são copiados para
+`dist/assets/files/` e links entre capítulos apontam para os IDs do livro consolidado.
+Exemplos em código não são tratados como links. O parser cobre esse subconjunto;
+não é uma implementação completa de CommonMark.
+
+A interface usa bundles locais de Marked, DOMPurify e Mermaid, com versões e
+integridade registradas em `vendor/manifest.json` e `vendor/SHA256SUMS`. O build
+verifica os checksums e não baixa dependências. HTML e respostas do DocBot passam
+por sanitização; IDs de navegação são atribuídos a partir do índice do compilador.
+A CSP bloqueia scripts inline, frames e conexões externas. Estilos inline são
+permitidos para os SVGs do Mermaid; estilos arbitrários dos documentos são removidos.
+Imagens remotas são substituídas pelo texto alternativo para manter o uso offline.
+Os previews aplicam uma CSP sandbox separada aos ativos publicados. Se usar outro
+servidor, configure cabeçalhos equivalentes; a CSP do index não protege arquivos
+HTML/SVG abertos como documentos separados.
+
+Para atualizar os bundles, revise as versões em `scripts/vendor/update.py` e execute
+esse script explicitamente com acesso à internet. Inclua os bundles, licenças,
+manifesto e checksums atualizados no mesmo commit. Node/npm são necessários apenas
+para os testes da interface, não para executar o pipeline.
+
+O servidor Bash continua sendo o padrão. Para múltiplas conexões simultâneas:
+
+```bash
+./catalyst.sh all
+./catalyst.sh serve --backend threaded --port 8080
+# Abra http://127.0.0.1:8080
+./catalyst.sh serve --restart   # Preserva backend e porta.
+./catalyst.sh serve --stop
+```
+
+O backend `threaded` utiliza somente a biblioteca padrão do Python 3.10+, limita
+conexões ativas a 32 e aplica timeout aos clientes. Ambos os backends escutam em
+`127.0.0.1`, compartilham o controle de PID, respeitam o lock de publicação e
+acompanham novos builds sem reiniciar. São previews locais, não servidores de produção.

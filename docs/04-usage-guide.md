@@ -6,7 +6,7 @@ O **Catalyst Shell Engine** foi desenvolvido para operar em GNU/Linux, incluindo
 
 - **Interpretador Shell**: GNU Bash 4.4 ou superior (a validação desta revisão foi executada no Ubuntu WSL).
 - **Utilitários do Sistema**: Utilitários padrão do GNU Coreutils (`cat`, `wc`, `sort`, `head`, `tail`, `date`, `chmod`, `mkdir`, `rm`, `nl`).
-- **Processadores de Texto e Regex**: `sed` (com suporte a expressões regulares estendidas `-E`), `awk` (POSIX AWK / GNU AWK) e `grep` (com flags `-E` e `-o`).
+- **Processadores de Texto e Regex**: `sed` (com suporte a expressões regulares estendidas `-E`), `gawk` (GNU AWK) e `grep` (com flags `-E` e `-o`).
 - **Compressão e Checksum**: `tar`, `gzip`, `md5sum` (com fallback automático em `cksum`).
 - **Servidor Web Local (Opcional para preview)**: OpenBSD netcat (`nc -N`), `setsid`, `flock`, `realpath` e `timeout`. Escuta apenas em `127.0.0.1`.
 
@@ -165,7 +165,9 @@ sed -i 's/\r$//' catalyst.sh
 ## Validação local e integração contínua
 
 ```bash
-sudo apt install -y shellcheck
+sudo apt install -y shellcheck python3
+# Instale Node.js 24.22.2 para os testes da interface.
+npm ci --ignore-scripts --no-audit --no-fund
 bash scripts/ci/check.sh
 ```
 
@@ -174,3 +176,27 @@ ShellCheck inclui todos os scripts e módulos. Os testes usam fixtures Linux e
 verificam os modos de publicação `symlink` e `directory`, duas execuções simultâneas,
 interrupções, rollback e acesso HTTP à geração atual. `validate` não publica;
 `toc`, `sanitize` e `stats` recompilam um snapshot completo.
+
+
+## Interface offline e backend concorrente
+
+```bash
+./catalyst.sh serve --backend threaded --port 8080
+./catalyst.sh serve --restart
+./catalyst.sh serve --stop
+```
+
+O modo `threaded` requer Python 3.10+ e atende até 32 conexões ativas; clientes
+incompletos recebem timeout. O modo `bash` permanece disponível e é o padrão.
+O reinício preserva porta e backend. Ambos utilizam o mesmo lock de publicação.
+
+A interface carrega CSS, JavaScript e bibliotecas de `dist/ui/`, sem CDN. Imagens
+remotas do conteúdo viram texto alternativo. HTML de documentos e do DocBot passa
+por DOMPurify; Mermaid usa modo estrito e seu SVG também é sanitizado. A política
+CSP permite apenas scripts locais e aplica sandbox aos arquivos em `assets/`.
+
+Os capítulos podem usar subdiretórios, títulos H1–H6 ou Setext, IDs repetidos com
+sufixos, referências Markdown e caminhos relativos ao capítulo. O compilador
+valida fragmentos de arquivos Markdown locais e copia os ativos referenciados.
+O sumário e a interface consomem o mesmo índice. A sintaxe não cobre CommonMark
+inteiro; construções de containers profundamente aninhados exigem revisão.

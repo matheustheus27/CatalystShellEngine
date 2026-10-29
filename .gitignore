@@ -67,3 +67,4 @@ __pycache__/
 
 # Staging, geracoes publicadas, locks e ferramentas locais
 /.catalyst/
+/node_modules/

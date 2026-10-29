@@ -89,7 +89,7 @@ INTRO
     printf '\n## 4. Codigo-fonte numerado\n'
     for file in catalyst.sh scripts/core/*.{sh,awk,py} scripts/academic-report.sh; do
         language=bash
-        case "$file" in *.awk) language=awk ;; *.py) language=python ;; esac
+        case "$file" in *.awk) language='awk' ;; *.py) language=python ;; esac
         printf '\n### %s\n\n```%s\n' "$file" "$language"
         nl -ba -w 4 -s ': ' "$ROOT/$file"
         printf '```\n'

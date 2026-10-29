@@ -31,4 +31,5 @@ assert 'pacote inclui HTML' bash -c 'tar -tzf "$1" | grep -Fx index.html' _ "$FI
 assert 'relatorio com fontes modulares' cli report
 assert 'regressoes de CLI e HTTP' bash "$ROOT/scripts/tests/regression.sh"
 assert 'transacoes, interrupcoes e concorrencia' bash "$ROOT/scripts/tests/transaction.sh"
+assert 'backends HTTP e clientes simultaneos' python3 "$ROOT/scripts/tests/http_backends.py"
 echo 'Integracao, regressoes e transacoes aprovadas.'

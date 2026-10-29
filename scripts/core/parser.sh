@@ -32,8 +32,9 @@ consolidate_documents() {
         printf '%s\n' "$relative" >> "$work/files"
         if [[ "$doc" == *.md && "$doc" != "$docs_dir/"* ]]; then markdown+=("$doc"); fi
     done < <(find "$base_dir" -mindepth 1         \( -name '.*' -o -name node_modules -o -path "$base_dir/dist" \) -prune -o -type f -print0)
-    local headings_file="$(dirname "$output_file")/headings.tsv"
-    local links_file="$(dirname "$output_file")/links.tsv"
+    local headings_file links_file
+    headings_file="$(dirname "$output_file")/headings.tsv"
+    links_file="$(dirname "$output_file")/links.tsv"
     : > "$headings_file"
     : > "$links_file"
     gawk -v mode=index -v root="$base_dir" -v chapter_list="$work/chapters"         -v file_list="$work/files" -f "$program" "${markdown[@]}" > "$work/index"

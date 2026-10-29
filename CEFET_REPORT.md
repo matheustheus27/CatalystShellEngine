@@ -30,12 +30,13 @@ O resultado é `dist/reports/sigaa-report.md`, contendo:
 - planilha de 20 conceitos distintos, com as seis colunas do enunciado;
 - arquivo e linha encontrados diretamente na versão atual dos fontes;
 - resultado real do `cloc`, sem contagens históricas fixas;
-- código integral da CLI, de todos os módulos de `scripts/core/` e do gerador acadêmico, com linhas numeradas.
+- código integral da CLI, de os módulos Shell/AWK e o backend Python de `scripts/core/` e do gerador acadêmico, com linhas numeradas.
 
 Os conceitos de processos, sinais e PID são demonstrados no módulo do servidor.
 O script `scripts/academic-report.sh` gera o material acadêmico. Parser, sanitizer,
-validator, packager, preview e transação são carregados pela CLI. O HTML reside em
-`templates/index.html`, separado dos fontes Shell avaliados. A planilha aponta para
+validator, packager, preview e transação são carregados pela CLI. A interface reside em
+`templates/`, com bibliotecas locais em `vendor/`, separada do núcleo Bash/AWK.
+O backend concorrente é opcional e usa Python padrão. A planilha aponta para
 o arquivo que realmente executa cada conceito após a modularização.
 
 Para gerar o PDF obrigatório, instale o exportador em um ambiente isolado:
