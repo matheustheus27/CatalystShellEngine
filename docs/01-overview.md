@@ -30,7 +30,7 @@ A tabela abaixo resume as capacidades centrais do Catalyst Shell Engine, compara
 
 | Capacidade | Solução Tradicional (Multi-Runtime) | Solução Catalyst Shell Engine | Ferramentas Unix Empregadas |
 |---|---|---|---|
-| **Ingestão Documental** | Scripts Python com `pathlib` e bibliotecas terceiras | Varredura e ordenação natural com globbing | `ls`, `sort -V`, `cat` |
+| **Ingestão Documental** | Scripts Python com `pathlib` e bibliotecas terceiras | Varredura e ordenação natural com globbing | `find -print0`, `sort -zV`, `cat` |
 | **Sumário Hierárquico (TOC)** | Bibliotecas AST Markdown complexas | Parser semântico de cabeçalhos de 3 níveis | `awk`, `substr`, `tolower`, `gsub` |
 | **Sanitização Léxica** | Linters de terceiros (Prettier, Markdownlint) | Filtros de substituição por expressões regulares | `sed -E`, `s///` |
 | **Auditoria de Integridade** | Scripts Node.js com crawlers de links | Varredura léxica com metacaracteres estendidos | `grep -E -o`, `[[ =~ ]]` |

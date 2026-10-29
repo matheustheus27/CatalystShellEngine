@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
+# Os trechos abaixo sao texto literal do fonte, nunca comandos a expandir.
+# shellcheck disable=SC2016
 # Relatorio reproduzivel: referencias resolvidas a partir do codigo atual.
 set -eo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 OUT="${1:-$ROOT/dist/reports/sigaa-report.md}"
 mkdir -p "$(dirname "$OUT")"
-TMP=$(mktemp)
+TMP=$(mktemp "${OUT}.tmp.XXXXXXXX")
 trap 'rm -f "$TMP"' EXIT
 
 concept() {
@@ -37,7 +40,11 @@ sao documento consolidado, sumario, metricas, interface HTML e pacote tar.gz com
 checksums. A CLI recebe argumentos; os comandos read existentes consomem arquivos,
 pipes ou requisicoes HTTP, sem solicitar dados do teclado.
 
-O nucleo e Bash com utilitarios GNU/Linux. A interface gerada contem HTML, CSS e
+O nucleo e Bash com modulos de parser, sanitizacao, validacao, empacotamento e transacoes.
+Cada build usa staging privado e flock antes da publicacao. Em filesystem Linux,
+um link dist aponta atomicamente para a geracao concluida. Em DrvFS, a troca de
+arquivos e coordenada por lock e journal para manter compatibilidade Windows.
+A interface gerada contem HTML, CSS e
 JavaScript. O preview utiliza OpenBSD netcat e escuta somente em 127.0.0.1.
 
 Este texto deve corresponder ao problema efetivamente enviado a lista da disciplina;
@@ -54,31 +61,31 @@ distintos incluem os 15 solicitados no enunciado.
 INTRO
     concept 01 'Comandos basicos' catalyst.sh 'echo " Data do Sistema:' 'echo e date exibem a data da execucao.'
     concept 02 'Processamento de texto' catalyst.sh 'TOTAL_LINES=$(wc -l' 'wc conta as linhas do documento.'
-    concept 03 'Sistema de arquivos' catalyst.sh 'tar -czf "$OUTPUT_BUNDLE"' 'tar compacta os artefatos em gzip.'
+    concept 03 'Sistema de arquivos' scripts/core/packager.sh 'tar -czf "$output_archive"' 'tar compacta os artefatos em gzip.'
     concept 04 'Sistema de arquivos' catalyst.sh 'chmod 755 "$DIST_DIR"' 'chmod aplica permissoes octais ao diretorio.'
     concept 05 'Processos' scripts/core/server.sh 'ps -p "$pid"' 'ps verifica a existencia do processo registrado.'
     concept 06 'Processos' scripts/core/server.sh 'kill -15 -- "-$pid"' 'SIGTERM encerra o grupo de processos do preview.'
     concept 07 'Entradas, saidas e Redirecionamentos' catalyst.sh '> "$METRICS_FILE"' 'Redirecionamento grava o relatorio de metricas.'
-    concept 08 'Entradas, saidas e Redirecionamentos' catalyst.sh 'done < <(find' 'Pipe ordena arquivos; substituicao de processo alimenta o laco.'
-    concept 09 'Expansoes' catalyst.sh 'TOTAL_DOCS=$((TOTAL_DOCS + 1))' 'Expansao aritmetica incrementa o contador.'
-    concept 10 'Parametros e Variaveis' catalyst.sh 'DIST_DIR="${BASE_DIR}/dist"' 'Variavel criada pelo usuario define a pasta de saida.'
+    concept 08 'Entradas, saidas e Redirecionamentos' scripts/core/parser.sh 'done < <(find' 'Pipe ordena arquivos; substituicao de processo alimenta o laco.'
+    concept 09 'Expansoes' scripts/core/parser.sh 'TOTAL_DOCS=$((TOTAL_DOCS + 1))' 'Expansao aritmetica incrementa o contador.'
+    concept 10 'Parametros e Variaveis' catalyst.sh 'DIST_DIR="$PUBLISHED_DIR"' 'Variavel criada pelo usuario define a pasta de saida.'
     concept 11 'Parametros e Variaveis' scripts/core/server.sh 'local server_pid=$!' 'Parametro especial captura o PID do processo em background.'
     concept 12 'Parametros e Variaveis' catalyst.sh 'readonly APP_NAME=' 'readonly impede reatribuicao da constante.'
     concept 13 'Parametros e Variaveis' catalyst.sh 'COMMAND="${1:-help}"' 'Expansao avancada define help como valor padrao.'
-    concept 14 'Estruturas de fluxo condicionais' catalyst.sh 'if [ -f "$doc" ]; then' 'Teste -f seleciona arquivos regulares.'
+    concept 14 'Estruturas de fluxo condicionais' scripts/core/parser.sh 'if [ -f "$doc" ]; then' 'Teste -f seleciona arquivos regulares.'
     concept 15 'Estruturas de fluxo condicionais' catalyst.sh 'case "$COMMAND" in' 'case seleciona a operacao da CLI.'
-    concept 16 'Estruturas de fluxo condicionais' catalyst.sh '[ $TOTAL_DOCS -gt 0 ] &&' 'Operador AND condiciona a exibicao do total.'
-    concept 17 'Estruturas de fluxo de repeticao' catalyst.sh "while IFS= read -r -d '' doc; do" 'while percorre nomes delimitados por NUL, sem entrada do teclado.'
-    concept 18 'Expressoes Regulares' catalyst.sh 'grep -E -o "$link_pattern"' 'Regex estendida usa classes, grupos e quantificadores para extrair links.'
-    concept 19 sed catalyst.sh "-e 's/[ \\t]+$//'" 'Programa sed remove espacos e tabulacoes finais.'
-    concept 20 AWK catalyst.sh 'h1 = 0; h2 = 0; h3 = 0; in_code = 0;' 'Programa AWK identifica titulos e calcula a hierarquia do sumario.'
+    concept 16 'Estruturas de fluxo condicionais' scripts/core/parser.sh '[ $TOTAL_DOCS -gt 0 ] &&' 'Operador AND condiciona a exibicao do total.'
+    concept 17 'Estruturas de fluxo de repeticao' scripts/core/parser.sh "while IFS= read -r -d '' doc; do" 'while percorre nomes delimitados por NUL, sem entrada do teclado.'
+    concept 18 'Expressoes Regulares' scripts/core/validator.sh 'grep -E -o "$link_pattern"' 'Regex estendida usa classes, grupos e quantificadores para extrair links.'
+    concept 19 sed scripts/core/sanitizer.sh "-e 's/[ \\t]+$//'" 'Programa sed remove espacos e tabulacoes finais.'
+    concept 20 AWK scripts/core/parser.sh 'h1 = 0; h2 = 0; h3 = 0; in_code = 0;' 'Programa AWK identifica titulos e calcula a hierarquia do sumario.'
     printf '\n## 3. Verificacao de linhas com cloc\n\n'
     command -v cloc >/dev/null || { echo 'Instale cloc para gerar a evidencia obrigatoria.' >&2; exit 1; }
-    printf 'Comando: `cloc catalyst.sh scripts/core/server.sh`\n\n```text\n'
-    cloc --quiet "$ROOT/catalyst.sh" "$ROOT/scripts/core/server.sh"
+    printf 'Comando: `cloc catalyst.sh scripts/core/*.sh scripts/academic-report.sh`\n\n```text\n'
+    cloc --quiet "$ROOT/catalyst.sh" "$ROOT"/scripts/core/*.sh "$ROOT/scripts/academic-report.sh"
     printf '```\n\nA contagem e produzida pela ferramenta, sem reutilizar valores historicos.\n'
     printf '\n## 4. Codigo-fonte numerado\n'
-    for file in catalyst.sh scripts/core/server.sh; do
+    for file in catalyst.sh scripts/core/*.sh scripts/academic-report.sh; do
         printf '\n### %s\n\n```bash\n' "$file"
         nl -ba -w 4 -s ': ' "$ROOT/$file"
         printf '```\n'

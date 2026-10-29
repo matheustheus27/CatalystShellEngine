@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# Catalyst Shell Engine - Markdown Sanitizer (Uso intensivo de sed)
-# ==============================================================================
-set -e
-
+# Normalizacao Markdown compartilhada pelo parser e pela CLI.
 sanitize_markdown() {
-    local input_file="$1"
-    local output_file="$2"
-
-    if [ ! -f "$input_file" ]; then
-        echo "Arquivo fonte nao encontrado: $input_file" >&2
-        return 1
-    fi
-
-    # Programa em sed (Conceito 19):
-    # 1. Remove espacos e tabs em branco no final de linhas: s/[ \t]+$//
-    # 2. Padroniza cabecalhos garantindo espaco unico apos hashtags: s/^(#+)[ \t]*/\1 /
+    local input_file="$1" output_file="$2"
+    # Programa em sed: Higienizacao e padronizacao de cabecalhos e ancoras internas (Conceito 19)
     sed -E \
         -e 's/[ \t]+$//' \
         -e 's/^(#+)[ \t]+/\1 /' \
+        -e 's/\(00-cover\.md\)/(#catalystshellengine)/g' \
+        -e 's/\(01-overview\.md\)/(#01visogeralemotivao)/g' \
+        -e 's/\(02-architecture\.md\)/(#02arquiteturaeengenhariadepipeline)/g' \
+        -e 's/\(03-concepts\.md\)/(#03conformidadecomoenunciado20conceitos)/g' \
+        -e 's/\(04-usage-guide\.md\)/(#04manualoperacionaldacli)/g' \
+        -e 's/\(05-benchmarks\.md\)/(#05anlisecomparativaebenchmarks)/g' \
+        -e 's/\(06-conclusion\.md\)/(#06conclusoeresultados)/g' \
+        -e 's/\(CEFET_REPORT\.md\)/(#03conformidadecomoenunciado20conceitos)/g' \
+        -e 's/\(catalyst\.sh\)/(#04manualoperacionaldacli)/g' \
         "$input_file" > "$output_file"
+
 }

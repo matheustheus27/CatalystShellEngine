@@ -36,6 +36,7 @@ O **Catalyst Shell Engine** resolve o problema real de fragmentação de documen
 ```text
 CatalystShellEngine/
 ├── catalyst.sh               # CLI mestre / orquestrador principal (executável)
+├── templates/index.html      # Interface HTML/CSS/JavaScript usada pelo preview
 ├── docs/                     # Capítulos completos de documentação técnica
 │   ├── 00-cover.md           # Capa oficial e metadados institucionais
 │   ├── 01-overview.md        # Visão geral, contexto do GlassHub e matriz de capacidades
@@ -114,7 +115,7 @@ source scripts/completion.bash
 
 - **Disciplina**: TEFC: Shell Scripting - Engenharia da Computação.
 - **Conceitos Contemplados**: **20 de 20 conceitos** (requisito mínimo: 15).
-- **Linhas de Código (`cloc`)**: contagem atual gerada por `cloc catalyst.sh scripts/core/server.sh` (requisito mínimo: 30 linhas).
+- **Linhas de Código (`cloc`)**: contagem atual gerada por `cloc catalyst.sh scripts/core/*.sh scripts/academic-report.sh` (requisito mínimo: 30 linhas).
 - **Entrada Não-Interativa**: 100% parametrizada via argumentos CLI (`$1`, `$@`), sem bloqueio de teclado.
 
 Consulte o arquivo [`CEFET_REPORT.md`](CEFET_REPORT.md) para visualizar a **Planilha Oficial da Etapa 02** com instruções para gerar a planilha com as linhas atuais e o PDF de entrega.
@@ -190,8 +191,44 @@ O comando `report --pdf` exporta a entrega com código numerado, planilha dinâm
 saída real do `cloc`. A dependência opcional Python/ReportLab e a configuração de
 `CATALYST_PDF_PYTHON` estão descritas em [CEFET_REPORT.md](CEFET_REPORT.md).
 
-O núcleo da CLI está em `catalyst.sh`; o servidor é executado como módulo externo.
-Os outros módulos de `scripts/core/` são referências auxiliares e ainda não são
-carregados pelo orquestrador. A interface gerada contém HTML, CSS e JavaScript.
+A CLI em `catalyst.sh` carrega os módulos de parser, sanitização, validação,
+empacotamento, preview, transação e configuração de completion. O servidor é
+executado como módulo externo. A interface HTML/CSS/JavaScript fica em
+`templates/index.html`. Cada responsabilidade possui uma única implementação.
 
 Melhorias futuras e limites estão no [capítulo de conclusão](docs/06-conclusion.md).
+
+
+## Publicação transacional e CI
+
+Cada comando que altera a saída adquire `flock` em `.catalyst/build.lock`, cria
+um staging exclusivo no mesmo filesystem e publica somente após sucesso. Builds
+inválidos ou interrompidos preservam a última saída válida. `validate` verifica
+os fontes atuais em staging e não altera a publicação. `toc`, `sanitize` e `stats`
+atualizam um snapshot completo para manter documento, sumário e interface coerentes.
+
+Em filesystem Linux, `dist` é um link para uma geração em `.catalyst/`; o commit
+substitui esse link por rename atômico, mantendo a geração anterior. A migração
+inicial de um diretório `dist` legado usa o bloqueio de publicação.
+
+Em unidades Windows montadas pelo WSL (DrvFS/v9fs), o modo automático mantém
+`dist` como diretório legível pelo Windows. Nesse modo, arquivos são substituídos
+sob `.catalyst/publish.lock`, com backup e journal para rollback e recuperação.
+A CLI e o preview respeitam esse bloqueio; leitores externos que não o utilizam
+podem observar arquivos de gerações diferentes durante o commit. Para exigir a
+troca atômica do snapshot inteiro, execute em filesystem Linux nativo.
+
+É possível selecionar explicitamente `CATALYST_PUBLISH_MODE=symlink` ou
+`CATALYST_PUBLISH_MODE=directory` antes da primeira publicação. Não edite `dist`
+manual ou simultaneamente; os fontes ficam em `docs`, `images` e `templates`.
+Não remova `.catalyst` enquanto houver processos do projeto em execução.
+
+O workflow `.github/workflows/ci.yml` executa em pushes e pull requests, no Ubuntu
+22.04 e 24.04, com permissões de leitura. Ele verifica sintaxe, ShellCheck, testes
+de integração, HTTP, concorrência, interrupções e rollback, e guarda os artefatos.
+Para executar as mesmas verificações localmente:
+
+```bash
+sudo apt install -y shellcheck
+bash scripts/ci/check.sh
+```

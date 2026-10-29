@@ -66,14 +66,14 @@ flowchart TD
 - Definição de permissões octais estritas (`chmod 755 "$DIST_DIR"`).
 - Criação do arquivo de métricas sem truncar resultados de subcomandos anteriores (`touch "$METRICS_FILE"`).
 
-### Estágio 2: Consolidação e Sanitização Léxica (`consolidate_docs`)
+### Estágio 2: Consolidação e Sanitização Léxica (`consolidate_documents`)
 - Varredura determinística de todos os capítulos via `sort -V` (ordenação natural que preserva a sequência `00`, `01`, `02`... `10`).
 - Concatenação limpa com injeção de comentários semânticos (`<!-- Capitulo: ... -->`).
 - Pipeline em **`sed -E`**:
   * Remoção cirúrgica de espaços e tabulações no final de linhas (`s/[ \t]+$//`).
   * Normalização do espaçamento de cabeçalhos Markdown, garantindo exatamente um espaço após a sequência de `#` (`s/^(#+)[ \t]+/\1 /`).
 
-### Estágio 3: Extração de Sumário Hierárquico via AWK (`generate_toc_awk`)
+### Estágio 3: Extração de Sumário Hierárquico via AWK (`generate_toc`)
 - O processamento de cabeçalhos Markdown é delegado a um programa completo em **AWK**:
   * Mantém acumuladores numéricos independentes para níveis H1, H2 e H3 (`h1`, `h2`, `h3`).
   * Gera numeração sequencial formatada (ex: `1.`, `1.1.`, `1.1.1.`).
@@ -81,7 +81,7 @@ flowchart TD
   * Constrói âncoras (*slugs*) limpando caracteres especiais (`gsub(/[^a-z0-9_-]/, "", anchor)`).
   * Produz o arquivo `dist/docs/summary.md` com recuos proporcionais para navegação em árvore.
 
-### Estágio 4: Auditoria de Links e Imagens com Expressões Regulares (`validate_links_regex`)
+### Estágio 4: Auditoria de Links e Imagens com Expressões Regulares (`validate_assets_and_links`)
 - Varre o documento unificado utilizando **`grep -E -o '\[[^]]+\]\(([^)]+)\)'`**.
 - Filtra links externos (`http://`, `https://`) e âncoras locais (`#`), isolando referências a caminhos de arquivos relativos.
 - Testa a existência de cada ativo local referenciado (`[ -f "$target" ] || [ -d "$target" ]`), retornando erro quando encontra referências quebradas. Âncoras do documento também são verificadas; exemplos em blocos e trechos de código são ignorados.
@@ -134,4 +134,25 @@ CatalystShellEngine/
 └── CEFET_REPORT.md           # Relatório acadêmico oficial com planilha de conformidade
 ```
 
-O orquestrador executa o módulo de servidor e o gerador acadêmico. Os módulos de parser, sanitizer, validator e packager são auxiliares de referência e ainda não são carregados pela CLI. A interface usa uma convenção própria de âncoras, distinta da convenção do GitHub.
+O orquestrador carrega os módulos de parser, sanitizer, validator, packager, preview, transação e completion; executa o servidor e o gerador acadêmico como processos externos. O HTML está em `templates/index.html`. A interface usa uma convenção própria de âncoras, distinta da convenção do GitHub.
+
+
+## Staging, bloqueios e publicação
+
+Os escritores compartilham `.catalyst/build.lock` e trabalham em diretórios staging
+exclusivos. Só o snapshot concluído é publicado. Um segundo lock, `publish.lock`,
+coordena o commit com as respostas do preview, sem bloquear a leitura durante o
+processamento dos capítulos.
+
+No Linux nativo, um rename troca o link `dist` para a geração concluída. A geração
+anterior é mantida, e versões mais antigas são removidas sob o lock. A conversão
+inicial de um `dist` legado é coordenada por esse mesmo lock.
+
+No DrvFS do WSL, `dist` permanece um diretório compatível com Windows. Um journal
+registra o commit em andamento e permite restaurar o backup após falha ou queda.
+Nesse modo a consistência do snapshot depende do leitor respeitar `publish.lock`;
+leitores externos podem observar arquivos de versões diferentes durante o commit.
+
+O preview resolve a geração a cada requisição, para acompanhar builds novos sem
+reiniciar o processo. `watch` adquire o lock apenas em cada build; não o retém
+enquanto aguarda alterações.

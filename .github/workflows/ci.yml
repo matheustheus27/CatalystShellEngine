@@ -1,0 +1,47 @@
+name: Shell CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shell-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Bash, ShellCheck e testes (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Instalar ferramentas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc shellcheck
+      - name: Registrar ambiente
+        run: |
+          bash --version
+          shellcheck --version
+          cloc --version
+      - name: Sintaxe, analise estatica, integracao e regressoes
+        run: bash scripts/ci/check.sh
+      - name: Guardar artefatos validados
+        uses: actions/upload-artifact@v7
+        with:
+          name: catalyst-${{ matrix.os }}
+          path: |
+            dist/releases/*
+            dist/reports/sigaa-report.md
+          if-no-files-found: error
+          retention-days: 14

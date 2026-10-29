@@ -12,6 +12,12 @@
 #   autoload -U +X bashcompinit && bashcompinit && source scripts/completion.bash
 # ==============================================================================
 
+_catalyst_reply() {
+    local reply
+    COMPREPLY=()
+    while IFS= read -r reply; do COMPREPLY+=("$reply"); done < <(compgen "$@")
+}
+
 _catalyst_completions() {
     local cur="${2:-}"
     local prev="${3:-}"
@@ -41,12 +47,12 @@ _catalyst_completions() {
     # Se a chamada foi via 'bash' ou 'sh' e catalyst ainda nao foi especificado
     if [ "$script_idx" -eq -1 ]; then
         if [[ "${COMP_WORDS[0]}" =~ (bash|sh)$ ]]; then
-            COMPREPLY=( $(compgen -f -- "$cur") )
+            _catalyst_reply -f -- "$cur"
             return 0
         fi
         # Se for chamada direta catalyst.sh
         if [ "$cword" -le 1 ]; then
-            COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
+            _catalyst_reply -W "$commands" -- "$cur"
             return 0
         fi
     fi
@@ -55,22 +61,22 @@ _catalyst_completions() {
 
     # 1. Primeiro argumento apos catalyst.sh: lista todos os subcomandos disponiveis
     if [ "$cword" -eq "$target_idx" ]; then
-        COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
+        _catalyst_reply -W "$commands" -- "$cur"
         return 0
     fi
 
     # 2. Parametros contextuais de cada subcomando
     case "$prev" in
         completion)
-            COMPREPLY=( $(compgen -W "install uninstall source help" -- "$cur") )
+            _catalyst_reply -W "install uninstall source help" -- "$cur"
             return 0
             ;;
         serve)
-            COMPREPLY=( $(compgen -W "--stop stop --port -p 8000 8080 3000" -- "$cur") )
+            _catalyst_reply -W "--stop stop --restart restart --port -p 8000 8080 3000" -- "$cur"
             return 0
             ;;
         --port|-p)
-            COMPREPLY=( $(compgen -W "8000 8080 3000 5000" -- "$cur") )
+            _catalyst_reply -W "8000 8080 3000 5000" -- "$cur"
             return 0
             ;;
     esac

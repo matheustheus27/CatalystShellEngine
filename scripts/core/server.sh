@@ -2,8 +2,12 @@
 # Preview HTTP local: Bash + OpenBSD netcat. Nao recebe entrada do teclado.
 set -eo pipefail
 SCRIPT="$(realpath "$0")"
+# shellcheck source=scripts/core/transaction.sh
+source "$(dirname "$SCRIPT")/transaction.sh"
 ACTION="${1:-}"
-SERVE_DIR="$(realpath -m "${2:-.}")"
+SERVE_DIR="$(realpath -ms "${2:-.}")"
+PUBLISH_STATE="$(dirname "$SERVE_DIR")/.catalyst"
+mkdir -p "$PUBLISH_STATE"
 PORT="${3:-}"
 # Estado privado por usuario e projeto.
 STATE="${TMPDIR:-/tmp}/catalyst-${UID}-$(printf '%s' "$SERVE_DIR" | sha256sum | cut -c1-16)"
@@ -21,19 +25,39 @@ is_our_server() {
     [[ "${args[1]:-}" == "$SCRIPT" && "${args[2]:-}" == worker && "${args[3]:-}" == "$SERVE_DIR" ]]
 }
 
-respond() {
-    local request method target version line file status body type
+respond() (
+    local request method target version line file status body type root
     IFS= read -r request || return 0
     request="${request%$'\r'}"
     read -r method target version <<< "$request"
     while IFS= read -r line; do [ "${line%$'\r'}" ] || break; done
+    exec 8>"$PUBLISH_STATE/publish.lock"
+    flock -s 8
+    if [ -f "$PUBLISH_STATE/in-progress" ]; then
+        flock -x 8
+        if [ -f "$PUBLISH_STATE/in-progress" ]; then
+            sync_output_tree "$PUBLISH_STATE/previous" "$SERVE_DIR"
+            rm -f "$PUBLISH_STATE/in-progress"
+            rm -rf -- "$PUBLISH_STATE/previous"
+        fi
+        flock -s 8
+    fi
+    # Recupera o ultimo diretorio se um escritor recebeu SIGKILL na troca DrvFS.
+    if [ ! -e "$SERVE_DIR" ] && [ -d "$PUBLISH_STATE/previous" ]; then
+        flock -x 8
+        if [ ! -e "$SERVE_DIR" ]; then mv -T "$PUBLISH_STATE/previous" "$SERVE_DIR"; fi
+        flock -s 8
+    fi
+    root=$(realpath -m "$SERVE_DIR")
     target="${target%%\?*}"
     [ "$target" != / ] || target=/index.html
-    file="$(realpath -m "$SERVE_DIR/${target#/}")"
+    file="$(realpath -m "$root/${target#/}")"
     status='200 OK'; type='application/octet-stream'; body=''
-    if [ "$method" != GET ] && [ "$method" != HEAD ]; then
+    if [[ "$version" != HTTP/1.0 && "$version" != HTTP/1.1 ]]; then
+        status='400 Bad Request'; body='Requisicao invalida'
+    elif [ "$method" != GET ] && [ "$method" != HEAD ]; then
         status='405 Method Not Allowed'; body='Metodo nao permitido'
-    elif [[ "$target" != /* || "$target" == *%* || "$file" != "$SERVE_DIR/"* ]]; then
+    elif [[ "$target" != /* || "$target" == *%* || "$file" != "$root/"* ]]; then
         status='403 Forbidden'; body='Acesso negado'
     elif [ ! -f "$file" ] || [ ! -r "$file" ]; then
         status='404 Not Found'; body='Arquivo nao encontrado'
@@ -56,7 +80,7 @@ respond() {
     if [ "$method" != HEAD ]; then
         if [ "$status" = '200 OK' ]; then cat "$file"; else printf '%s' "$body"; fi
     fi
-}
+)
 
 worker() {
     local fifo="$STATE/response"
@@ -66,6 +90,8 @@ worker() {
     trap 'exit 0' INT TERM
     while true; do
         # EOF fecha a conexao; timeout limita clientes com cabecalhos incompletos.
+        # FIFO bidirecional intencional: resposta HTTP alimenta o stdin do nc.
+        # shellcheck disable=SC2094
         if ! timeout --foreground 10 nc -N -l 127.0.0.1 "$PORT" < "$fifo" | respond > "$fifo"; then
             sleep 0.1
         fi
@@ -93,9 +119,10 @@ stop_server() {
 start_server() {
     [ -d "$SERVE_DIR" ] || { echo 'Execute build antes de serve.' >&2; return 1; }
     PORT="${PORT:-8000}"
-    [[ "$PORT" =~ ^[0-9]{1,5}$ ]] && ((10#$PORT >= 1 && 10#$PORT <= 65535)) || {
-        echo 'Porta invalida: use um inteiro de 1 a 65535.' >&2; return 1;
-    }
+    if [[ ! "$PORT" =~ ^[0-9]{1,5}$ ]] || ((10#$PORT < 1 || 10#$PORT > 65535)); then
+        echo 'Porta invalida: use um inteiro de 1 a 65535.' >&2
+        return 1
+    fi
     PORT=$((10#$PORT))
     for utility in nc setsid flock realpath sha256sum timeout; do
         command -v "$utility" >/dev/null || { echo "Dependencia ausente: $utility" >&2; return 1; }

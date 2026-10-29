@@ -75,7 +75,7 @@ source scripts/completion.bash
 | `./catalyst.sh all` | Executa o pipeline completo de ponta a ponta (build, sumário, auditoria, métricas, preview web e release compactado). | Gera todos os artefatos organizados sob `dist/`. |
 | `./catalyst.sh build` | Consolida todos os capítulos `docs/*.md` na ordem natural, higieniza o texto com `sed`, extrai o sumário com `awk` e compila o `index.html`. | `dist/docs/full-document.md`, `dist/docs/summary.md`, `dist/index.html` |
 | `./catalyst.sh validate` | Executa auditoria estrita de links Markdown internos e ativos locais de imagem via expressões regulares `grep -E -o`. | Relatório de validação no console. |
-| `./catalyst.sh toc` | Executa exclusivamente o parser em AWK para extrair cabeçalhos e gerar o sumário hierárquico indexado. | `dist/docs/summary.md` |
+| `./catalyst.sh toc` | Atualiza o snapshot consistente, incluindo o sumário hierárquico em AWK. | `dist/docs/summary.md` |
 | `./catalyst.sh sanitize` | Executa o programa em `sed` para remover espaços residuais em fim de linha e normalizar cabeçalhos Markdown. | `dist/docs/full-document.md` |
 | `./catalyst.sh stats` | Computa contagem de palavras e linhas via `wc`, extrai amostras de cabeçalho/rodapé e grava o sumário estatístico. | `dist/metrics/metrics.txt` |
 | `./catalyst.sh pack` | Compacta os artefatos de distribuição em `.tar.gz`, aplica permissões de segurança octais/simbólicas e gera assinatura `md5sum`. | `dist/releases/catalyst-release-*.tar.gz`, `*.tar.gz.md5` |
@@ -160,3 +160,17 @@ Caso execute o script em ambiente Linux após clonar no Windows e receber mensag
 ```bash
 sed -i 's/\r$//' catalyst.sh
 ```
+
+
+## Validação local e integração contínua
+
+```bash
+sudo apt install -y shellcheck
+bash scripts/ci/check.sh
+```
+
+O mesmo script é executado no GitHub Actions, no Ubuntu 22.04 e 24.04. A análise
+ShellCheck inclui todos os scripts e módulos. Os testes usam fixtures Linux e
+verificam os modos de publicação `symlink` e `directory`, duas execuções simultâneas,
+interrupções, rollback e acesso HTTP à geração atual. `validate` não publica;
+`toc`, `sanitize` e `stats` recompilam um snapshot completo.

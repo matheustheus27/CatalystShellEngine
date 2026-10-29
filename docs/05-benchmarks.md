@@ -21,7 +21,7 @@ bash --version
 uname -a
 wc -c docs/*.md
 /usr/bin/time -v bash catalyst.sh all
-cloc catalyst.sh scripts/core/server.sh
+cloc catalyst.sh scripts/core/*.sh scripts/academic-report.sh
 ```
 
 Repita a medição, registre as amostras completas e apresente mediana e dispersão.

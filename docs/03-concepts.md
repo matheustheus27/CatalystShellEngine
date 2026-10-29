@@ -4,7 +4,7 @@
 
 O enunciado do **Trabalho Prático - TEFC: Shell Scripting** estabelece 20 conceitos fundamentais de desenvolvimento em ambiente Unix/Bash, exigindo a utilização comprovada de no mínimo 15 conceitos em um script com pelo menos 30 linhas de código.
 
-O **Catalyst Shell Engine** demonstra os 20 conceitos do enunciado considerando o script principal e o módulo de servidor. A planilha gerada por `report` é a referência para arquivos e linhas atuais; a contagem de código vem da execução real do `cloc`.
+O **Catalyst Shell Engine** demonstra os 20 conceitos do enunciado considerando a CLI e os módulos carregados por ela. A planilha gerada por `report` é a referência para arquivos e linhas atuais; a contagem de código vem da execução real do `cloc`.
 
 Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação prática no código-fonte de [`catalyst.sh`](#04manualoperacionaldacli).
 
@@ -66,7 +66,7 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
 ### 08. Pipes e Redirecionamentos Avançados (Aula: Entradas, saídas e Redirecionamentos)
 - **Conceitos**: Pipes (`|`), redirecionamentos compostos e *Process Substitution* (`<(...)`)
 - **Aplicação no Projeto**:
-  * Pipe linear com ordenação: `ls "$DOCS_DIR"/*.md 2>/dev/null | sort -V`.
+  * Pipe linear com ordenação: `find "$docs_dir" -maxdepth 1 -type f -name "*.md" -print0 | sort -zV`.
   * Redirecionamento avançado em bloco: `{ echo "..."; echo "..."; } > "$METRICS_FILE"`.
   * *Process Substitution*: `while IFS= read -r match; do ... done < <(grep -E -o "$link_pattern" "$OUTPUT_DOC")`, alimentando o laço `while` sem criar subshell isolada para as variáveis acumuladoras.
 
@@ -99,8 +99,8 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
   * `readonly APP_NAME="Catalyst Shell Engine"`: Imutabilidade de constantes essenciais.
   * `export CATALYST_ENV="production"`: Exportação global para processos filhos.
   * `declare -i TOTAL_DOCS=0`: Declaração explícita de variáveis inteiras tipadas.
-  * `declare -a CHAPTER_FILES=()`: Array indexado para armazenar a lista de capítulos processados.
-  * Declaração de funções modulares estruturadas (`init_env()`, `consolidate_docs()`, etc.).
+  * `local -a artifacts=(docs metrics reports index.html)`: Array com os artefatos do pacote, no módulo de empacotamento.
+  * Declaração de funções modulares estruturadas (`init_env()`, `consolidate_documents()`, etc.).
 
 ### 13. Expansões Avançadas de Parâmetros (Aula: Parâmetros e Variáveis)
 - **Conceitos**: `${param:-default}, ${param:=val}, ${param%%pattern}, ${param#pattern}, ${param//pattern/string}`
@@ -139,7 +139,7 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
 ### 17. Comandos de Repetição e Sequenciadores (Aula: Estruturas de fluxo de repetição)
 - **Conceitos**: `for, while, until, select, break, continue`
 - **Aplicação no Projeto**:
-  * Laço `for`: Iteração ordenada sobre o resultado de globbing e ordenação de capítulos.
+  * Laço `while`: Iteração sobre caminhos de capítulos delimitados por NUL e ordenados, incluindo nomes com espaços.
   * Laço `while`: Processamento linha por linha dos resultados do validador de links.
   * `continue`: Salto de iterações em linhas vazias detectadas durante a auditoria.
 

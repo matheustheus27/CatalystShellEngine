@@ -3,8 +3,7 @@
 # ==============================================================================
 
 # Diretório de distribuição e compilação (gerado por ./catalyst.sh build / all)
-dist/*
-!dist/.gitkeep
+/dist
 
 # Arquivos temporários de concatenação e compilação
 *.tmp
@@ -65,3 +64,6 @@ scratch/
 .venv-report/
 __pycache__/
 *.pyc
+
+# Staging, geracoes publicadas, locks e ferramentas locais
+/.catalyst/
