@@ -8,7 +8,7 @@ cleanup() {
 }
 trap cleanup EXIT
 cp "$ROOT/catalyst.sh" "$FIXTURE/"
-cp -R "$ROOT/scripts" "$ROOT/images" "$ROOT/templates" "$FIXTURE/"
+cp -R "$ROOT/scripts" "$ROOT/images" "$ROOT/templates" "$ROOT/vendor" "$FIXTURE/"
 mkdir "$FIXTURE/docs"
 cli() { bash "$FIXTURE/catalyst.sh" "$@"; }
 reject() { if "$@" >/dev/null 2>&1; then echo "Aceitou entrada invalida: $*" >&2; exit 1; fi; }

@@ -28,6 +28,19 @@ sync_output_tree() {
     done < <(find "$destination" -depth -mindepth 1 -print0)
 }
 
+# O chamador deve possuir o lock exclusivo de publicacao.
+recover_publication() {
+    local published="$1" state="$2"
+    if [ -f "$state/in-progress" ]; then
+        sync_output_tree "$state/previous" "$published"
+        rm -f "$state/in-progress"
+        rm -rf -- "$state/previous"
+    fi
+    if [ ! -e "$published" ] && [ ! -L "$published" ] && [ -d "$state/previous" ]; then
+        mv -T "$state/previous" "$published"
+    fi
+}
+
 cleanup_transaction() {
     local status="$1"
     trap - EXIT
@@ -65,15 +78,7 @@ begin_transaction() {
     trap 'exit 130' INT
     trap 'exit 143' TERM
     flock -x 8
-    if [ -f "$STATE_DIR/in-progress" ]; then
-        sync_output_tree "$STATE_DIR/previous" "$PUBLISHED_DIR"
-        rm -f "$STATE_DIR/in-progress"
-        rm -rf -- "$STATE_DIR/previous"
-    fi
-    # Recuperacao de uma interrupcao nao tratavel durante o modo diretorio.
-    if [ ! -e "$PUBLISHED_DIR" ] && [ ! -L "$PUBLISHED_DIR" ] && [ -e "$STATE_DIR/previous" ]; then
-        mv -T "$STATE_DIR/previous" "$PUBLISHED_DIR"
-    fi
+    recover_publication "$PUBLISHED_DIR" "$STATE_DIR"
     flock -u 8
     STAGE_DIR=$(mktemp -d "$STATE_DIR/stage.XXXXXXXX")
     if [ "$1" != clean ] && [ -d "$PUBLISHED_DIR" ]; then
@@ -146,3 +151,13 @@ run_transaction() (
     # validate audita os fontes atuais sem modificar a ultima publicacao.
     if [ "$command" != validate ]; then publish_transaction; fi
 )
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    set -eo pipefail
+    if [ "${1:-}" = recover ] && [ $# -eq 3 ]; then
+        recover_publication "$2" "$3"
+    else
+        echo 'Uso: transaction.sh recover PUBLICACAO ESTADO' >&2
+        exit 1
+    fi
+fi

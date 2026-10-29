@@ -72,7 +72,11 @@ _catalyst_completions() {
             return 0
             ;;
         serve)
-            _catalyst_reply -W "--stop stop --restart restart --port -p 8000 8080 3000" -- "$cur"
+            _catalyst_reply -W "--stop stop --restart restart --backend --concurrent --port -p 8000 8080 3000" -- "$cur"
+            return 0
+            ;;
+        --backend)
+            _catalyst_reply -W "bash threaded" -- "$cur"
             return 0
             ;;
         --port|-p)

@@ -8,7 +8,8 @@ cleanup() {
 }
 trap cleanup EXIT
 cp "$ROOT/catalyst.sh" "$FIXTURE/"
-cp -R "$ROOT/scripts" "$ROOT/docs" "$ROOT/images" "$ROOT/templates" "$FIXTURE/"
+cp -R "$ROOT/scripts" "$ROOT/docs" "$ROOT/images" "$ROOT/templates" "$ROOT/vendor" "$FIXTURE/"
+cp "$ROOT/CEFET_REPORT.md" "$ROOT/README.md" "$FIXTURE/"
 cli() { bash "$FIXTURE/catalyst.sh" "$@"; }
 assert() {
     local name="$1"

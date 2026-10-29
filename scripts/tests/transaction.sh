@@ -8,7 +8,7 @@ cleanup() {
 }
 trap cleanup EXIT
 cp "$ROOT/catalyst.sh" "$FIXTURE/"
-cp -R "$ROOT/scripts" "$ROOT/templates" "$ROOT/images" "$FIXTURE/"
+cp -R "$ROOT/scripts" "$ROOT/templates" "$ROOT/vendor" "$ROOT/images" "$FIXTURE/"
 mkdir "$FIXTURE/docs" "$FIXTURE/wrappers"
 cli() { bash "$FIXTURE/catalyst.sh" "$@"; }
 snapshot() { (cd "$FIXTURE/dist" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum); }

@@ -45,7 +45,9 @@ Cada build usa staging privado e flock antes da publicacao. Em filesystem Linux,
 um link dist aponta atomicamente para a geracao concluida. Em DrvFS, a troca de
 arquivos e coordenada por lock e journal para manter compatibilidade Windows.
 A interface gerada contem HTML, CSS e
-JavaScript. O preview utiliza OpenBSD netcat e escuta somente em 127.0.0.1.
+JavaScript com Marked, DOMPurify e Mermaid locais, sem CDN. O preview padrao usa
+Bash e netcat; --backend threaded usa Python padrao com multiplas threads. Ambos
+escutam somente em 127.0.0.1 e respeitam o bloqueio de publicacao.
 
 Este texto deve corresponder ao problema efetivamente enviado a lista da disciplina;
 a existencia deste relatorio nao comprova o envio da Etapa 01.
@@ -76,17 +78,19 @@ INTRO
     concept 15 'Estruturas de fluxo condicionais' catalyst.sh 'case "$COMMAND" in' 'case seleciona a operacao da CLI.'
     concept 16 'Estruturas de fluxo condicionais' scripts/core/parser.sh '[ $TOTAL_DOCS -gt 0 ] &&' 'Operador AND condiciona a exibicao do total.'
     concept 17 'Estruturas de fluxo de repeticao' scripts/core/parser.sh "while IFS= read -r -d '' doc; do" 'while percorre nomes delimitados por NUL, sem entrada do teclado.'
-    concept 18 'Expressoes Regulares' scripts/core/validator.sh 'grep -E -o "$link_pattern"' 'Regex estendida usa classes, grupos e quantificadores para extrair links.'
-    concept 19 sed scripts/core/sanitizer.sh "-e 's/[ \\t]+$//'" 'Programa sed remove espacos e tabulacoes finais.'
-    concept 20 AWK scripts/core/parser.sh 'h1 = 0; h2 = 0; h3 = 0; in_code = 0;' 'Programa AWK identifica titulos e calcula a hierarquia do sumario.'
+    concept 18 'Expressoes Regulares' scripts/core/validator.sh 'grep -E' 'Regex estendida com classe POSIX identifica erros de referencias no indice.'
+    concept 19 sed scripts/core/sanitizer.sh 'sed -e' 'Programa sed normaliza CRLF sem alterar os blocos de codigo.'
+    concept 20 AWK scripts/core/markdown.awk 'function heading(' 'Programa GNU AWK indexa titulos e calcula IDs unicos e referencias por capitulo.'
     printf '\n## 3. Verificacao de linhas com cloc\n\n'
     command -v cloc >/dev/null || { echo 'Instale cloc para gerar a evidencia obrigatoria.' >&2; exit 1; }
-    printf 'Comando: `cloc catalyst.sh scripts/core/*.sh scripts/academic-report.sh`\n\n```text\n'
-    cloc --quiet "$ROOT/catalyst.sh" "$ROOT"/scripts/core/*.sh "$ROOT/scripts/academic-report.sh"
+    printf 'Comando: `cloc catalyst.sh scripts/core/*.{sh,awk,py} scripts/academic-report.sh`\n\n```text\n'
+    cloc --quiet "$ROOT/catalyst.sh" "$ROOT"/scripts/core/*.{sh,awk,py} "$ROOT/scripts/academic-report.sh"
     printf '```\n\nA contagem e produzida pela ferramenta, sem reutilizar valores historicos.\n'
     printf '\n## 4. Codigo-fonte numerado\n'
-    for file in catalyst.sh scripts/core/*.sh scripts/academic-report.sh; do
-        printf '\n### %s\n\n```bash\n' "$file"
+    for file in catalyst.sh scripts/core/*.{sh,awk,py} scripts/academic-report.sh; do
+        language=bash
+        case "$file" in *.awk) language=awk ;; *.py) language=python ;; esac
+        printf '\n### %s\n\n```%s\n' "$file" "$language"
         nl -ba -w 4 -s ': ' "$ROOT/$file"
         printf '```\n'
     done

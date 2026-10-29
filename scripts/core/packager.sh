@@ -7,7 +7,7 @@ package_release() {
     echo "[7/7] Empacotando versao de distribuicao..."
 
     # Sistema de arquivos: tar e gzip (Conceito 03)
-    local -a artifacts=(docs metrics reports index.html)
+    local -a artifacts=(docs metrics reports index.html ui)
     [ ! -d "$source_dir/assets" ] || artifacts+=(assets)
     tar -czf "$output_archive" -C "$source_dir" "${artifacts[@]}" || return 1
 

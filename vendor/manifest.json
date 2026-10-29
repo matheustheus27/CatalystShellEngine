@@ -1,0 +1,23 @@
+{
+  "marked": {
+    "version": "18.1.2",
+    "registry": "https://registry.npmjs.org/marked/18.1.2",
+    "tarball": "https://registry.npmjs.org/marked/-/marked-18.1.2.tgz",
+    "integrity": "sha512-DfOnvLAQ6WYeWxWO1u4RyFOeqyHup6dks5PPqnoFiooU7ipRvidO/2j8plhAHIiZg574E9ZlzSjUiPMLAzFkgg==",
+    "bundle": "marked/marked.umd.js"
+  },
+  "dompurify": {
+    "version": "3.4.17",
+    "registry": "https://registry.npmjs.org/dompurify/3.4.17",
+    "tarball": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.17.tgz",
+    "integrity": "sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==",
+    "bundle": "dompurify/purify.min.js"
+  },
+  "mermaid": {
+    "version": "12.2.0",
+    "registry": "https://registry.npmjs.org/mermaid/12.2.0",
+    "tarball": "https://registry.npmjs.org/mermaid/-/mermaid-12.2.0.tgz",
+    "integrity": "sha512-w7nr/SFrLO7BaVTs3dQTvYSV6nYSBj0Yy9DjBhsIJtAcHqRzXSq4Pg32ujHZ/AdWsAMNEvvhbm5dt9E2tOiHzw==",
+    "bundle": "mermaid/mermaid.min.js"
+  }
+}

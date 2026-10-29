@@ -99,7 +99,7 @@ Exemplos:
   $0 test
   $0 report
   $0 watch
-  $0 serve --port 8080
+  $0 serve --backend threaded --port 8080
   $0 serve --stop
   $0 serve --restart
 EOF
@@ -129,7 +129,7 @@ compute_statistics() {
     echo "[5/7] Calculando metricas e checksums de integridade..."
 
     # Recalcula contagem de capitulos caso esteja zerada (Conceitos 09 e 16)
-    [ $TOTAL_DOCS -eq 0 ] && TOTAL_DOCS=$(find "$DOCS_DIR" -maxdepth 1 -type f -name "*.md" -printf "." | wc -c)
+    [ $TOTAL_DOCS -eq 0 ] && TOTAL_DOCS=$(find "$DOCS_DIR" -type f -name "*.md" -printf "." | wc -c)
 
     # Processamento de texto: wc -l e wc -w (Conceito 02)
     TOTAL_LINES=$(wc -l < "$OUTPUT_DOC")
@@ -164,7 +164,7 @@ compute_statistics() {
 # ==============================================================================
 manage_server() {
     local action="start"
-    local port=""
+    local port="" backend=""
 
     # Processa argumentos e flags flexiveis (Conceitos 11, 14, 15, 17)
     # Conceito 11: parametros posicionais ($1, $#)
@@ -179,6 +179,12 @@ manage_server() {
             --stop|stop)
                 action="stop"
                 ;;
+            --backend)
+                shift
+                [ $# -gt 0 ] || { echo 'Informe bash ou threaded apos --backend.' >&2; return 1; }
+                backend="$1"
+                ;;
+            --concurrent) backend=threaded ;;
             --port|-p)
                 shift
                 if [ $# -eq 0 ]; then
@@ -213,15 +219,15 @@ manage_server() {
     case "$action" in
         start)
             # Executa o modulo externo do servidor passando parametros posicionais.
-            bash "$server_script" start "$PUBLISHED_DIR" "${port:-8000}"
+            bash "$server_script" start "$PUBLISHED_DIR" "${port:-8000}" "$backend"
             ;;
         restart)
             # Executa o modulo externo para reiniciar o servidor.
-            bash "$server_script" restart "$PUBLISHED_DIR" "$port"
+            bash "$server_script" restart "$PUBLISHED_DIR" "$port" "$backend"
             ;;
         stop)
             # Executa o modulo externo para encerrar o servidor.
-            bash "$server_script" stop "$PUBLISHED_DIR" "$port"
+            bash "$server_script" stop "$PUBLISHED_DIR" "$port" "$backend"
             ;;
     esac
 }
@@ -252,7 +258,7 @@ COMMAND="${1:-help}"
 
 build_snapshot() {
     init_env
-    consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC"
+    consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC" "$BASE_DIR"
     generate_toc "$OUTPUT_DOC" "$OUTPUT_TOC"
     validate_assets_and_links "$OUTPUT_DOC" "$BASE_DIR" "$DOCS_DIR"
     compute_statistics
@@ -270,7 +276,7 @@ run_pipeline() {
             ;;
         validate)
             init_env
-            consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC"
+            consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC" "$BASE_DIR"
             validate_assets_and_links "$OUTPUT_DOC" "$BASE_DIR" "$DOCS_DIR"
             ;;
         pack|report)
@@ -294,7 +300,7 @@ watch_docs() {
     trap 'exit 130' INT
     trap 'exit 143' TERM
     while true; do
-        current_checksum=$(find "$DOCS_DIR" -maxdepth 1 -type f -name '*.md' -print0 | sort -zV | xargs -0 -r sha256sum | sha256sum)
+        current_checksum=$(find "$DOCS_DIR" -type f -name '*.md' -print0 | sort -zV | xargs -0 -r sha256sum | sha256sum)
         if [ "$current_checksum" != "$last_checksum" ]; then
             if bash "$BASE_DIR/catalyst.sh" build; then
                 last_checksum="$current_checksum"
