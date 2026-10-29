@@ -13,6 +13,8 @@
 #   Implementa integralmente todos os 20 conceitos avaliados pela disciplina.
 # ==============================================================================
 
+set -eo pipefail
+
 # Atributos de variaveis: readonly e export (Conceito 12)
 readonly APP_NAME="Catalyst Shell Engine"
 readonly APP_VERSION="1.0.0"
@@ -105,8 +107,8 @@ init_env() {
     # Permissoes em representacao octal: chmod (Conceito 04)
     chmod 755 "$DIST_DIR"
 
-    # Redirecionamento da saida para truncar arquivo de metricas (Conceito 07)
-    > "$METRICS_FILE"
+    # Preserva metricas existentes entre subcomandos.
+    touch "$METRICS_FILE"
 }
 
 # ==============================================================================
@@ -116,11 +118,13 @@ consolidate_docs() {
     echo "[2/7] Consolidando capitulos de documentacao..."
     
     local temp_concat="${DIST_DIR}/.concat_raw.tmp"
+    TOTAL_DOCS=0
+    CHAPTER_FILES=()
     > "$temp_concat"
 
     # Comandos de repeticao: for (Conceito 17)
     # Pipes e ordenacao: sort (Conceito 02 e 08)
-    for doc in $(ls "$DOCS_DIR"/*.md 2>/dev/null | sort -V); do
+    while IFS= read -r -d '' doc; do
         # Teste condicional com test/if: arquivos (Conceito 14)
         if [ -f "$doc" ]; then
             local filename
@@ -136,7 +140,12 @@ consolidate_docs() {
             cat "$doc" >> "$temp_concat"
             echo "" >> "$temp_concat"
         fi
-    done
+    done < <(find "$DOCS_DIR" -maxdepth 1 -type f -name '*.md' -print0 | sort -zV)
+
+    if [ "$TOTAL_DOCS" -eq 0 ]; then
+        echo "Nenhum capitulo Markdown encontrado em $DOCS_DIR" >&2
+        return 1
+    fi
 
     # Outras formas de desvio: && (Conceito 16)
     [ $TOTAL_DOCS -gt 0 ] && echo "Total de capitulos detectados: $TOTAL_DOCS"
@@ -175,7 +184,7 @@ generate_toc_awk() {
     BEGIN {
         h1 = 0; h2 = 0; h3 = 0; in_code = 0;
     }
-    /^```/ {
+    /^[ \t]*(```|~~~)/ {
         in_code = !in_code;
         next;
     }
@@ -222,18 +231,28 @@ validate_links_regex() {
     fi
 
     # Expressao regular estendida (grep -E) com metacaracteres: ^, !, \[, \], +, (, ) (Conceito 18)
-    local link_pattern='\[[^]]+\]\(([^)]+)\)'
+    local link_pattern='!?\[[^]]*\]\(([^)]+)\)'
     local broken_links=0
+    local headings
+    headings=$(awk '
+        /^[ \t]*(```|~~~)/ {code=!code; next}
+        !code && /^#{1,3} / {title=$0; sub(/^#+ /,"",title); title=tolower(title); gsub(/[^a-z0-9_-]/,"",title); print title}
+    ' "$OUTPUT_DOC")
 
     # Pipes avancados com while e redirecionamento de entrada < (Conceitos 07 e 08)
     while IFS= read -r match; do
         [ -z "$match" ] && continue
         # Expansao avancada de substituicao de padrao (Conceito 13)
         local raw_url
-        raw_url=$(echo "$match" | sed -E 's/\[[^]]+\]\(([^)]+)\)/\1/')
+        raw_url=$(echo "$match" | sed -E 's/^!?\[[^]]*\]\(([^)]+)\)/\1/')
         
         # Teste com expressao regular Bash =~ (Conceito 14)
-        if [[ ! "$raw_url" =~ ^https?:// && ! "$raw_url" =~ ^# ]]; then
+        if [[ "$raw_url" == \#* ]]; then
+            if ! grep -Fxq -- "${raw_url#\#}" <<< "$headings"; then
+                echo "  [FALHA] Ancora inexistente: $raw_url" >&2
+                broken_links=$((broken_links + 1))
+            fi
+        elif [[ ! "$raw_url" =~ ^(https?://|mailto:|data:) ]]; then
             # Remove parametro de ancora se houver (Conceito 13)
             local clean_target="${raw_url%%#*}"
             local target_path="${BASE_DIR}/${clean_target}"
@@ -246,12 +265,13 @@ validate_links_regex() {
                 broken_links=$((broken_links + 1))
             fi
         fi
-    done < <(grep -E -o "$link_pattern" "$OUTPUT_DOC" 2>/dev/null || true)
+    done < <(awk '/^[ \t]*(```|~~~)/ {code=!code; next} !code {gsub(/`[^`]*`/, ""); print}' "$OUTPUT_DOC" | grep -E -o "$link_pattern" || true)
 
     if [ "$broken_links" -eq 0 ]; then
         echo "Todos os links e referencias locais foram validados com sucesso!"
     else
         echo "Auditoria concluida: $broken_links referencias locais requerem atencao."
+        return 1
     fi
 }
 
@@ -1242,6 +1262,10 @@ generate_html_preview() {
                     document.querySelectorAll('#doc-render h1, #doc-render h2, #doc-render h3').forEach(el => {
                         el.id = el.innerText.toLowerCase().replace(/[^a-z0-9_-]/g, '');
                     });
+                    document.querySelectorAll('#doc-render img').forEach(el => {
+                        const src = el.getAttribute('src');
+                        if (src && src.startsWith('images/')) el.setAttribute('src', 'assets/' + src.slice(7));
+                    });
                     setTimeout(initScrollSpy, 250);
                 }
             } catch (e) {
@@ -1736,6 +1760,10 @@ generate_html_preview() {
 </body>
 </html>
 EOF
+    if [ -d "$BASE_DIR/images" ]; then
+        mkdir -p "$DIST_DIR/assets"
+        cp -R "$BASE_DIR/images/." "$DIST_DIR/assets/"
+    fi
     echo "Interface HTML criada com sucesso em: $OUTPUT_HTML"
 }
 
@@ -1746,12 +1774,15 @@ package_release() {
     echo "[7/7] Empacotando versao de distribuicao..."
     
     # Sistema de arquivos: tar e gzip (Conceito 03)
-    tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" "docs" "metrics" "reports" "index.html" 2>/dev/null
+    local -a artifacts=(docs metrics reports index.html)
+    [ ! -d "$DIST_DIR/assets" ] || artifacts+=(assets)
+    tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" "${artifacts[@]}" || return 1
     
     # Permissoes simbolicas: chmod (Conceito 04)
     chmod u=rw,go=r "$OUTPUT_BUNDLE"
 
-    # Checksum de arquivo com md5sum ou cksum (Conceito 03)
+    sha256sum "$OUTPUT_BUNDLE" > "${OUTPUT_BUNDLE}.sha256"
+    # MD5 preservado apenas para compatibilidade; SHA-256 e o checksum principal.
     if command -v md5sum &>/dev/null; then
         md5sum "$OUTPUT_BUNDLE" > "${OUTPUT_BUNDLE}.md5"
         echo "Release bundle gerado com sucesso: $OUTPUT_BUNDLE"
@@ -1839,45 +1870,7 @@ clean_dist() {
 # GERADOR DE RELATORIO FORMATADO PARA O SIGAA (nl -ba)
 # ==============================================================================
 generate_sigaa_report() {
-    echo "[SIGAA] Gerando relatorio oficial unificado com codigo numerado..."
-    local report_output="${REPORTS_OUT_DIR}/sigaa-report.md"
-    local numbered_code="${REPORTS_OUT_DIR}/catalyst-code-numbered.txt"
-
-    # Usa nl -ba para numerar todas as linhas de codigo do script
-    if command -v nl &>/dev/null; then
-        nl -ba -w 4 -s ": " "$0" > "$numbered_code"
-    else
-        awk '{ printf("%4d: %s\n", NR, $0); }' "$0" > "$numbered_code"
-    fi
-
-    # Combina a descricao do problema, codigo numerado e planilha de conceitos
-    {
-        echo "# Relatório de Submissão Oficial SIGAA - Catalyst Shell Engine"
-        echo ""
-        echo "**Instituição**: Centro Federal de Educação Tecnológica de Minas Gerais (CEFET-MG)"
-        echo "**Disciplina**: TEFC: Shell Scripting - Engenharia da Computação"
-        echo "**Aluno**: Matheus Ferreira | **Ano/Semestre**: 2026/2"
-        echo "**Data de Geração**: $(date '+%d/%m/%Y %H:%M:%S')"
-        echo ""
-        echo "---"
-        echo ""
-        sed -n '10,48p' "$BASE_DIR/CEFET_REPORT.md"
-        echo ""
-        echo "---"
-        echo ""
-        echo "## Código-Fonte Completo do Shell Script (Linhas Numeradas)"
-        echo ""
-        echo '```bash'
-        cat "$numbered_code"
-        echo '```'
-        echo ""
-        echo "---"
-        echo ""
-        sed -n '52,$p' "$BASE_DIR/CEFET_REPORT.md"
-    } > "$report_output"
-
-    rm -f "$numbered_code"
-    echo "Relatório oficial unificado para o SIGAA gerado em: $report_output"
+    bash "$SCRIPTS_DIR/academic-report.sh" "$REPORTS_OUT_DIR/sigaa-report.md"
 }
 
 # ==============================================================================
@@ -1888,15 +1881,20 @@ watch_docs() {
     echo "Pressione Ctrl+C para encerrar."
     
     local last_checksum=""
+    consolidate_docs
+    generate_toc_awk
+    compute_statistics
+    generate_html_preview
     while true; do
         local current_checksum
-        current_checksum=$(ls -l --time-style=+%s "$DOCS_DIR"/*.md 2>/dev/null | md5sum 2>/dev/null || cksum)
+        current_checksum=$(find "$DOCS_DIR" -maxdepth 1 -type f -name "*.md" -print0 | sort -zV | xargs -0 -r sha256sum | sha256sum)
         
         if [ "$current_checksum" != "$last_checksum" ]; then
             if [ -n "$last_checksum" ]; then
                 echo -e "\n[$(date '+%H:%M:%S')] Alteração detectada em docs/. Recompilando..."
                 consolidate_docs
                 generate_toc_awk
+                compute_statistics
                 generate_html_preview
                 echo "[$(date '+%H:%M:%S')] Recompilação concluída com sucesso!"
             fi
@@ -1910,6 +1908,17 @@ watch_docs() {
 # SUITE DE TESTES AUTOMATIZADOS (Asserts e Integracao)
 # ==============================================================================
 run_tests() {
+    # Arquivos novos e permissoes reais em filesystem Linux (inclusive no WSL).
+    if [ "${CATALYST_TEST_CHILD:-}" != 1 ]; then
+        local test_root test_status=0
+        test_root=$(mktemp -d /tmp/catalyst-tests.XXXXXXXX)
+        cp "$BASE_DIR/catalyst.sh" "$test_root/"
+        cp -R "$BASE_DIR/scripts" "$BASE_DIR/docs" "$BASE_DIR/images" "$test_root/"
+        CATALYST_TEST_CHILD=1 bash "$test_root/catalyst.sh" test || test_status=$?
+        bash "$test_root/catalyst.sh" serve --stop >/dev/null 2>&1 || true
+        rm -rf -- "$test_root"
+        return "$test_status"
+    fi
     echo "================================================================="
     echo " 🧪 Executando Suíte de Testes Automatizados do Catalyst"
     echo "================================================================="
@@ -1922,11 +1931,13 @@ run_tests() {
         shift
         test_count=$((test_count + 1))
         echo -n "  Teste $test_count: $test_name... "
-        if "$@" >/dev/null 2>&1; then
+        local result
+        if result=$("$@" 2>&1); then
             echo -e "\033[32m[PASSOU]\033[0m"
         else
             echo -e "\033[31m[FALHOU]\033[0m"
             test_failures=$((test_failures + 1))
+            printf '%s\n' "$result" >&2
         fi
     }
 
@@ -1945,7 +1956,7 @@ run_tests() {
 
     # 1. Teste de inicializacao de ambiente
     assert_success "Inicialização de diretórios (init_env)" init_env
-    assert_success "Permissão 755 no diretório dist" test -d "$DIST_DIR"
+    assert_success "Permissão 755 no diretório dist" test "$(stat -c %a "$DIST_DIR")" = 755
 
     # 2. Teste de consolidacao
     assert_success "Consolidação de capítulos (consolidate_docs)" consolidate_docs
@@ -1962,13 +1973,20 @@ run_tests() {
     assert_success "Cálculo de métricas (compute_statistics)" compute_statistics
     assert_file_exists "Arquivo metrics.txt gerado e não vazio" "$METRICS_FILE"
 
+    assert_success "Geracao do HTML antes do pacote" generate_html_preview
+
     # 6. Teste de empacotamento
     assert_success "Empacotamento de release tar.gz (package_release)" package_release
     assert_file_exists "Tarball de release gerado" "$OUTPUT_BUNDLE"
+    assert_success "Tarball contem interface HTML" bash -c 'tar -tzf "$1" | grep -Fx index.html' _ "$OUTPUT_BUNDLE"
+    assert_success "Checksum SHA-256 confere" sha256sum -c "${OUTPUT_BUNDLE}.sha256"
 
-    # 7. Teste de servidor HTTP em porta de teste 8999
-    assert_success "Inicialização do servidor HTTP na porta 8999" manage_server 8999
-    sleep 0.5
+    # Porta efemera evita interferir em servidores de desenvolvimento.
+    local test_port=$((20000 + RANDOM % 20000))
+    while nc -z -w 1 127.0.0.1 "$test_port"; do test_port=$((20000 + RANDOM % 20000)); done
+    assert_success "Inicialização do servidor HTTP" manage_server "$test_port"
+    assert_success "HTTP retorna documento real" curl --fail --silent --max-time 5 "http://127.0.0.1:$test_port/"
+    assert_success "HTTP retorna metricas" curl --fail --silent --max-time 5 "http://127.0.0.1:$test_port/metrics/metrics.txt"
     assert_success "Encerramento do servidor HTTP via sinal kill" manage_server --stop
 
     # 8. Teste do gerador de relatório SIGAA
@@ -2000,6 +2018,7 @@ case "$COMMAND" in
         init_env
         consolidate_docs
         generate_toc_awk
+        compute_statistics
         generate_html_preview
         ;;
     validate)
@@ -2030,7 +2049,7 @@ case "$COMMAND" in
         init_env
         [ ! -f "$OUTPUT_DOC" ] && consolidate_docs
         [ ! -f "$OUTPUT_TOC" ] && generate_toc_awk
-        [ ! -f "$METRICS_FILE" ] && compute_statistics
+        [ ! -s "$METRICS_FILE" ] && compute_statistics
         [ ! -f "$OUTPUT_HTML" ] && generate_html_preview
         package_release
         ;;
@@ -2044,7 +2063,7 @@ case "$COMMAND" in
         init_env
         [ ! -f "$OUTPUT_DOC" ] && consolidate_docs
         [ ! -f "$OUTPUT_TOC" ] && generate_toc_awk
-        [ ! -f "$METRICS_FILE" ] && compute_statistics
+        [ ! -s "$METRICS_FILE" ] && compute_statistics
         generate_sigaa_report
         ;;
     test)
