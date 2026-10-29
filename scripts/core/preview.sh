@@ -7,7 +7,7 @@ generate_html_preview() {
     mkdir -p "$dist_dir/ui"
     cp "$base_dir/templates/app.css" "$base_dir/templates/app.js" "$dist_dir/ui/"
     cp -R "$base_dir/vendor" "$dist_dir/ui/"
-    CSP="$(<"$base_dir/templates/csp.txt")" awk '{gsub(/__CSP__/,ENVIRON["CSP"]); print}' \
+    CSP="$(tr -d '\r' < "$base_dir/templates/csp.txt")" awk '{gsub(/__CSP__/,ENVIRON["CSP"]); print}' \
         "$base_dir/templates/index.html" > "$dist_dir/index.html"
     if [ -d "$base_dir/images" ]; then
         mkdir -p "$dist_dir/assets"

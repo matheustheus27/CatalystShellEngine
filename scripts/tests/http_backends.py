@@ -8,6 +8,7 @@ import shutil
 import socket
 import subprocess
 import tempfile
+import time
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -20,6 +21,9 @@ def main():
             shutil.copytree(ROOT / directory, fixture / directory)
         (fixture / 'docs').mkdir()
         (fixture / 'docs/01.md').write_text('# Concurrent preview\n[Download](../images/a%20b.txt)\n')
+        # Checkouts no Windows podem preservar CRLF: nunca emitir CR no valor HTTP.
+        policy = fixture / 'templates/csp.txt'
+        policy.write_bytes(policy.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
         payload = b'concurrent-content\n' * 16000
         (fixture / 'images/a b.txt').write_bytes(payload)
 
@@ -36,8 +40,7 @@ def main():
             cli('serve', '--backend', backend, '--port', str(port))
 
             def get(url, method='GET'):
-                # O backend Bash e sequencial; rearmar o listener pode exigir retry.
-                import time
+                # Apenas verificacoes de ciclo de vida podem precisar de retry.
                 for attempt in range(30):
                     connection = http.client.HTTPConnection('127.0.0.1', port, timeout=3)
                     try:
@@ -57,6 +60,28 @@ def main():
                 assert status == 200 and b'ui/app.js' in body
                 assert 'script-src' in headers['Content-Security-Policy']
                 assert headers['X-Content-Type-Options'] == 'nosniff'
+                assert '\r' not in headers['Content-Security-Policy']
+                assert b'\r' not in body
+                # Simula o navegador: conexoes paralelas, sem retries que ocultem
+                # resets/recusas entre respostas do listener Bash.
+                resources = ['ui/app.css', 'ui/app.js', 'ui/vendor/marked/marked.umd.js',
+                             'ui/vendor/dompurify/purify.min.js', 'ui/vendor/mermaid/mermaid.min.js']
+
+                def fetch_resource(resource):
+                    connection = http.client.HTTPConnection('127.0.0.1', port, timeout=10)
+                    try:
+                        connection.request('GET', '/' + resource)
+                        response = connection.getresponse()
+                        data = response.read()
+                        assert response.status == 200
+                        assert data == (fixture / 'dist' / resource).read_bytes()
+                        assert response.getheader('Content-Type').startswith(
+                            'text/css' if resource.endswith('.css') else 'application/javascript')
+                    finally:
+                        connection.close()
+
+                with ThreadPoolExecutor(max_workers=6) as pool:
+                    list(pool.map(fetch_resource, resources * 4))
                 assert get('/ui/app.js', 'HEAD')[2] == b''
                 assert get('/%2e%2e/catalyst.sh')[0] == 403
                 assert get('/missing')[0] == 404
@@ -65,6 +90,11 @@ def main():
                 assert asset[2] == payload
                 assert 'sandbox' in asset[1]['Content-Security-Policy']
                 assert get('/invalid%zz')[0] == 400
+                if backend == 'bash':
+                    with socket.create_connection(('127.0.0.1', port)) as slow:
+                        slow.sendall(b'GET / HTTP/1.1\r\nHost: localhost\r\nX-Slow: ')
+                        time.sleep(9)
+                        fetch_resource('ui/app.css')
                 if backend == 'threaded':
                     slow = socket.create_connection(('127.0.0.1', port))
                     try:

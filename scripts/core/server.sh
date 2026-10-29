@@ -10,7 +10,7 @@ PUBLISH_STATE="$(dirname "$SERVE_DIR")/.catalyst"
 mkdir -p "$PUBLISH_STATE"
 PORT="${3:-}"
 BACKEND="${4:-}"
-POLICY="$(<"$(dirname "$SCRIPT")/../../templates/csp.txt")"
+POLICY="$(tr -d '\r' < "$(dirname "$SCRIPT")/../../templates/csp.txt")"
 # Estado privado por usuario e projeto.
 STATE="${TMPDIR:-/tmp}/catalyst-${UID}-$(printf '%s' "$SERVE_DIR" | sha256sum | cut -c1-16)"
 umask 077
@@ -29,10 +29,20 @@ is_our_server() {
 
 respond() (
     local request method target version line file status body type root
-    IFS= read -r request || return 0
+    local read_status=0 headers_complete=0
+    IFS= read -r -t 6 request || read_status=$?
+    if [ "$read_status" != 0 ]; then
+        # Esperar o proximo cliente nao reinicia o listener; uma linha parcial
+        # expirada exige descartar a conexao antes de interpretar outro pedido.
+        if ((read_status > 128)) && [ -z "$request" ]; then return 0; fi
+        return 1
+    fi
     request="${request%$'\r'}"
     read -r method target version <<< "$request"
-    while IFS= read -r line; do [ "${line%$'\r'}" ] || break; done
+    while IFS= read -r -t 6 line; do
+        if [ -z "${line%$'\r'}" ]; then headers_complete=1; break; fi
+    done
+    [ "$headers_complete" = 1 ] || return 1
     exec 8>"$PUBLISH_STATE/publish.lock"
     flock -s 8
     if [ -f "$PUBLISH_STATE/in-progress" ] || { [ ! -e "$SERVE_DIR" ] && [ -d "$PUBLISH_STATE/previous" ]; }; then
@@ -97,13 +107,20 @@ worker() {
     local fifo="$STATE/response"
     rm -f "$fifo"
     mkfifo "$fifo"
-    trap 'rm -f "$fifo"' EXIT
+    trap 'rm -f "$fifo" "$STATE/listener.pid"' EXIT
     trap 'exit 0' INT TERM
     while true; do
-        # EOF fecha a conexao; timeout limita clientes com cabecalhos incompletos.
-        # FIFO bidirecional intencional: resposta HTTP alimenta o stdin do nc.
+        # -k mantem o socket aberto entre clientes: navegadores pedem CSS e
+        # scripts em paralelo. Content-Length delimita as respostas no FIFO.
         # shellcheck disable=SC2094
-        if ! timeout --foreground 10 nc -N -l 127.0.0.1 "$PORT" < "$fifo" | respond > "$fifo"; then
+        if ! (
+            echo "$BASHPID" > "$STATE/listener.pid"
+            exec nc -k -N -w 8 -l 127.0.0.1 "$PORT"
+        ) < "$fifo" | (
+            while respond; do :; done
+            # EOF ou timeout parcial: nao reutilizar bytes de clientes distintos.
+            kill "$(<"$STATE/listener.pid")" 2>/dev/null || true
+        ) > "$fifo"; then
             sleep 0.1
         fi
     done
