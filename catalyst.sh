@@ -35,7 +35,6 @@ OUTPUT_TOC="${DOCS_OUT_DIR}/summary.md"
 OUTPUT_HTML="${DIST_DIR}/index.html"
 OUTPUT_BUNDLE="${RELEASES_OUT_DIR}/catalyst-release-${APP_VERSION}.tar.gz"
 METRICS_FILE="${METRICS_OUT_DIR}/metrics.txt"
-PID_SERVER_FILE="/tmp/catalyst_server.pid"
 
 # Atributo de variavel: inteira (Conceito 12)
 declare -i TOTAL_DOCS=0
@@ -49,7 +48,9 @@ declare -a CHAPTER_FILES=()
 cleanup_exit() {
     rm -f "${DIST_DIR}/.concat_raw.tmp" 2>/dev/null || true
 }
-trap cleanup_exit EXIT INT TERM
+trap cleanup_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # ==============================================================================
 # FUNCOES AUXILIARES E MODULARES (Conceito 12: Funcao)
@@ -77,7 +78,7 @@ Comandos disponiveis:
   stats       Calcula estatisticas (linhas, palavras, checksums de integridade)
   pack        Empacota versao final em arquivo compactado .tar.gz com permissoes
   serve       Inicia servidor HTTP local em background (suporta --stop e porta)
-  report      Gera relatorio unificado com codigo numerado (nl -ba) para SIGAA
+  report      Gera relatorio com codigo numerado; --pdf exporta para PDF
   test        Executa suite de testes automatizados e assercoes do sistema
   watch       Modo observador com recompilacao automatica a cada salvamento
   clean       Limpa artefatos temporarios e gerados em dist/
@@ -1555,7 +1556,7 @@ generate_html_preview() {
                         • <code>./catalyst.sh serve [porta]</code>: Inicia o servidor HTTP nativo.<br>
                         • <code>./catalyst.sh stop</code>: Encerra o servidor em background via sinais.<br>
                         • <code>./catalyst.sh metrics</code>: Exibe relatório estatístico no terminal.<br>
-                        • <code>./catalyst.sh test</code>: Roda a suíte de 15 testes automatizados.<br>
+                        • <code>./catalyst.sh test</code>: Roda testes isolados de integração e regressão.<br>
                         • <code>./catalyst.sh clean</code>: Limpa com segurança o diretório <code>dist/</code>.<br>
                         • <code>./catalyst.sh report</code>: Gera o relatório oficial unificado para o SIGAA.`,
                         anchor: '04manualoperacionaldacli',
@@ -1582,8 +1583,9 @@ generate_html_preview() {
                     return {
                         html: `<strong>Comparativo: Catalyst Original vs. Catalyst Shell Engine:</strong><br><br>
                         • <strong>Consumo de Memória (RAM)</strong>: Redução de <strong>~98.5%</strong> (de ~450MB com Node/Python para &lt; 8MB em Shell puro).<br>
-                        • <strong>Tempo de Build</strong>: De ~4.2s para <strong>0.18s</strong> (mais de <strong>20x mais rápido</strong>).<br>
-                        • <strong>Dependências Externas</strong>: Redução de centenas de pacotes npm/pip para <strong>Zero dependências</strong> (Core Unix nativo).`,
+                        Os valores antigos de desempenho foram removidos por falta de dados reproduzíveis.<br>
+                        Consulte o capítulo de benchmarks para o procedimento de medição.
+                    `,
                         anchor: '05anlisecomparativaebenchmarks',
                         anchorTitle: '05. Análise Comparativa e Benchmarks'
                     };
@@ -1781,10 +1783,10 @@ package_release() {
     # Permissoes simbolicas: chmod (Conceito 04)
     chmod u=rw,go=r "$OUTPUT_BUNDLE"
 
-    sha256sum "$OUTPUT_BUNDLE" > "${OUTPUT_BUNDLE}.sha256"
+    (cd "$RELEASES_OUT_DIR" && sha256sum "$(basename "$OUTPUT_BUNDLE")") > "${OUTPUT_BUNDLE}.sha256"
     # MD5 preservado apenas para compatibilidade; SHA-256 e o checksum principal.
     if command -v md5sum &>/dev/null; then
-        md5sum "$OUTPUT_BUNDLE" > "${OUTPUT_BUNDLE}.md5"
+        (cd "$RELEASES_OUT_DIR" && md5sum "$(basename "$OUTPUT_BUNDLE")") > "${OUTPUT_BUNDLE}.md5"
         echo "Release bundle gerado com sucesso: $OUTPUT_BUNDLE"
         echo "Checksum MD5: $(cat "${OUTPUT_BUNDLE}.md5")"
     else
@@ -1816,7 +1818,11 @@ manage_server() {
                 ;;
             --port|-p)
                 shift
-                port="${1:-8000}"
+                if [ $# -eq 0 ]; then
+                    echo 'Informe o valor de --port.' >&2
+                    return 1
+                fi
+                port="$1"
                 ;;
             [0-9]*)
                 port="$1"
@@ -1871,6 +1877,13 @@ clean_dist() {
 # ==============================================================================
 generate_sigaa_report() {
     bash "$SCRIPTS_DIR/academic-report.sh" "$REPORTS_OUT_DIR/sigaa-report.md"
+    if [ "${1:-}" = --pdf ]; then
+        "${CATALYST_PDF_PYTHON:-python3}" "$SCRIPTS_DIR/export-report-pdf.py" \
+            "$REPORTS_OUT_DIR/sigaa-report.md" "$REPORTS_OUT_DIR/sigaa-report.pdf"
+    elif [ -n "${1:-}" ]; then
+        echo 'Uso: catalyst.sh report [--pdf]' >&2
+        return 1
+    fi
 }
 
 # ==============================================================================
@@ -1979,19 +1992,20 @@ run_tests() {
     assert_success "Empacotamento de release tar.gz (package_release)" package_release
     assert_file_exists "Tarball de release gerado" "$OUTPUT_BUNDLE"
     assert_success "Tarball contem interface HTML" bash -c 'tar -tzf "$1" | grep -Fx index.html' _ "$OUTPUT_BUNDLE"
-    assert_success "Checksum SHA-256 confere" sha256sum -c "${OUTPUT_BUNDLE}.sha256"
+    assert_success "Checksum SHA-256 confere" bash -c 'cd "$1" && sha256sum -c "$2"' _ "$RELEASES_OUT_DIR" "$(basename "$OUTPUT_BUNDLE").sha256"
 
     # Porta efemera evita interferir em servidores de desenvolvimento.
     local test_port=$((20000 + RANDOM % 20000))
     while nc -z -w 1 127.0.0.1 "$test_port"; do test_port=$((20000 + RANDOM % 20000)); done
     assert_success "Inicialização do servidor HTTP" manage_server "$test_port"
-    assert_success "HTTP retorna documento real" curl --fail --silent --max-time 5 "http://127.0.0.1:$test_port/"
-    assert_success "HTTP retorna metricas" curl --fail --silent --max-time 5 "http://127.0.0.1:$test_port/metrics/metrics.txt"
+    assert_success "HTTP retorna documento real" curl --fail --silent --show-error --retry 3 --retry-connrefused --max-time 5 "http://127.0.0.1:$test_port/"
+    assert_success "HTTP retorna metricas" curl --fail --silent --show-error --retry 3 --retry-connrefused --max-time 5 "http://127.0.0.1:$test_port/metrics/metrics.txt"
     assert_success "Encerramento do servidor HTTP via sinal kill" manage_server --stop
 
     # 8. Teste do gerador de relatório SIGAA
     assert_success "Geração de relatório unificado para o SIGAA" generate_sigaa_report
     assert_file_exists "Arquivo sigaa-report.md gerado" "${REPORTS_OUT_DIR}/sigaa-report.md"
+    assert_success "Regressoes de CLI, arquivos, HTTP e relatorio" bash "$SCRIPTS_DIR/tests/regression.sh"
 
     echo "================================================================="
     if [ "$test_failures" -eq 0 ]; then
@@ -2064,7 +2078,7 @@ case "$COMMAND" in
         [ ! -f "$OUTPUT_DOC" ] && consolidate_docs
         [ ! -f "$OUTPUT_TOC" ] && generate_toc_awk
         [ ! -s "$METRICS_FILE" ] && compute_statistics
-        generate_sigaa_report
+        generate_sigaa_report "${2:-}"
         ;;
     test)
         show_banner

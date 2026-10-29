@@ -1,29 +1,49 @@
 # 06. Conclusão e Resultados
 
-## Síntese dos Resultados Alcançados
+## Resultado da implementação
 
-O desenvolvimento do **Catalyst Shell Engine** cumpriu com rigor e excelência todos os objetivos propostos para o Trabalho Prático da disciplina **TEFC: Shell Scripting**:
+O projeto consome capítulos Markdown e gera documentação consolidada, sumário,
+métricas, interface HTML e distribuição compactada. Os 20 conceitos são
+identificados no script principal e no módulo de servidor. O relatório acadêmico
+resolve as linhas diretamente nos fontes e registra a execução real do `cloc`.
 
-1. **Resolução de Problema Real e Útil**: Foi concebida uma solução de engenharia para um problema concreto da indústria de software — a governança, consolidação, sanitização e certificação de documentação técnica distribuída.
-2. **Cobertura Integral dos Conceitos da Ementa**: O projeto incorporou ativamente **todos os 20 conceitos previstos no enunciado**, superando a exigência mínima de 15 conceitos. Comandos de processamento de texto (`awk`, `sed`, `grep -E`, `wc`, `sort`), gestão do sistema de arquivos (`tar`, `gzip`, `chmod`, `md5sum`), controle de processos (`ps`, `kill`, `jobs`), expansões avançadas e manipulação de variáveis foram articulados harmonicamente em uma arquitetura limpa.
-3. **Ausência de Comandos Bloqueantes (`read`)**: O sistema é 100% não-interativo, operando exclusivamente via flags e argumentos de linha de comando (`$1`, `$@`), o que o qualifica para integração direta em pipelines de CI/CD automatizados.
-4. **Volume e Qualidade de Código (`cloc`)**: Com **mais de 550 linhas de código Bourne Shell ativo**, o script `catalyst.sh` supera em mais de 18 vezes o limite mínimo de 30 linhas estipulado pelo professor, destacando-se pela organização modular, tratamento defensivo de erros e documentação minuciosa.
+O pipeline retorna falha para referências inválidas, preserva métricas entre
+comandos e aceita nomes de capítulos com espaços. O preview valida portas, mantém
+estado por usuário/projeto e encerra seu grupo de processos. Os testes utilizam
+um diretório temporário Linux e incluem requisições HTTP e entradas inválidas.
+O PDF acadêmico é exportado por uma ferramenta Python opcional, separada do núcleo.
 
----
+## Limites atuais
 
-## Lições de Engenharia e Aprendizado
+- O preview HTTP é sequencial e destinado a desenvolvimento local.
+- O parser cobre um subconjunto de Markdown; não implementa toda a especificação.
+- As âncoras seguem a convenção da interface, que remove espaços e acentos; títulos
+  repetidos ainda precisam de identificadores únicos em uma evolução futura.
+- A interface depende de bibliotecas em CDN. O HTML dos capítulos é considerado
+  confiável; conteúdo recebido de terceiros exige sanitização antes da renderização.
+- Builds simultâneos ainda compartilham arquivos temporários e saídas em dist/.
+- O checksum detecta alterações; autenticidade depende de uma referência confiável.
 
-A transição da arquitetura corporativa do [**GlassHub Catalyst**](https://github.com/matheustheus27/GlassHubCatalyst) para um motor nativo em Shell Script evidenciou importantes lições de computação:
+## Implementações recomendadas para maior robustez
 
-- **O Poder da Simplicidade Unix**: Tarefas que frequentemente demandam bibliotecas de centenas de megabytes em Node.js ou Python podem ser resolvidas de forma mais rápida, segura e elegante através da composição criteriosa de utilitários Unix canônicos (`cat`, `awk`, `sed`, `sort`).
-- **Determinismo e Imutabilidade**: O uso de hashes criptográficos (`md5sum`) e o controle granular de permissões octais e simbólicas (`chmod 755`, `chmod u=rw,go=r`) fornecem garantias robustas de integridade para a cadeia de publicação de software.
-- **Ciclo de Vida Responsivo de Processos**: A gestão precisa de processos em segundo plano através do parâmetro especial `$!`, inspeção em `/proc` via `ps` e sinalização padronizada POSIX (`kill -15` / `kill -9`) assegura que servidores de preview possam ser inicializados e encerrados sem deixar processos órfãos ou portas presas.
-
----
-
-## Roadmap e Evoluções Futuras
-
-Para versões subsequentes do Catalyst Shell Engine, planeja-se:
-- Suporte a geração direta de arquivos PDF utilizando compiladores tipográficos nativos (`groff` ou `troff`), mantendo a filosofia de zero dependências externas.
-- Plugin de publicação automática para GitHub Pages via comandos Git em pipeline headless.
-- Extensão do motor de auditoria de links para verificação assíncrona de URLs externas via `curl --head` com controle estrito de timeout.
+1. **CI no Linux com ShellCheck**: executar sintaxe, análise estática, integração e
+   regressões em todo pull request, usando versões documentadas de Bash e ferramentas.
+2. **Build transacional e bloqueio**: usar flock por projeto, diretório temporário
+   exclusivo e publicação por troca atômica para preservar a última saída válida.
+3. **Consolidar os módulos**: remover duplicação entre a CLI e scripts/core e manter
+   uma única implementação para parsing, sanitização, validação e empacotamento.
+4. **Parser Markdown mais completo**: tratar títulos repetidos, cercas de tamanhos
+   variados, links de referência, caminhos relativos por capítulo e fragmentos de
+   arquivos locais com uma convenção única de identificadores.
+5. **Interface autossuficiente e sanitizada**: fixar e distribuir dependências locais,
+   aplicar sanitização de HTML e uma política CSP compatível com a interface.
+6. **Validação externa opcional**: verificar URLs por curl com timeout, limite de
+   concorrência, cache e tratamento explícito de redirecionamentos e erros de rede.
+7. **Releases reproduzíveis**: normalizar timestamps e metadados do tar, produzir
+   manifesto de fontes e separar checksums de assinaturas digitais verificáveis.
+8. **Observação mais precisa**: usar inotify quando disponível, debounce e monitorar
+   também ativos, templates e alterações nos scripts, com fallback por checksum.
+9. **Preview concorrente opcional**: oferecer integração com um servidor estático
+   apropriado para múltiplas conexões, mantendo o preview Bash como demonstração.
+10. **Testes de isolamento e falhas**: incluir concorrência de builds, interrupção
+    durante escrita, falta de dependências, disco cheio e documentos muito grandes.

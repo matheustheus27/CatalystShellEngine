@@ -35,7 +35,7 @@
 | **Aluno** | Matheus Thiago de Souza Ferreira |
 | **Projeto de Referência** | [GlassHub Catalyst](https://github.com/matheustheus27/GlassHubCatalyst) |
 | **Artefato Principal** | [`catalyst.sh`](#04manualoperacionaldacli) (CLI Mestre e Orquestrador) |
-| **Metodologia** | Automação 100% não-interativa (sem comando `read`), conformidade estrita com o enunciado |
+| **Metodologia** | Automação 100% não-interativa (sem leitura do teclado), conformidade estrita com o enunciado |
 
 ---
 

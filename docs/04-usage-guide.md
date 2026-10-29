@@ -2,15 +2,51 @@
 
 ## Requisitos e Pré-requisitos do Sistema
 
-O **Catalyst Shell Engine** foi desenvolvido para operar nativamente em qualquer sistema operacional compatível com POSIX que forneça um interpretador Bash moderno:
+O **Catalyst Shell Engine** foi desenvolvido para operar em GNU/Linux, incluindo Ubuntu WSL, com Bash moderno:
 
-- **Interpretador Shell**: GNU Bash 4.4 ou superior (testado e certificado em Bash 5.0, 5.1 e 5.3).
+- **Interpretador Shell**: GNU Bash 4.4 ou superior (a validação desta revisão foi executada no Ubuntu WSL).
 - **Utilitários do Sistema**: Utilitários padrão do GNU Coreutils (`cat`, `wc`, `sort`, `head`, `tail`, `date`, `chmod`, `mkdir`, `rm`, `nl`).
 - **Processadores de Texto e Regex**: `sed` (com suporte a expressões regulares estendidas `-E`), `awk` (POSIX AWK / GNU AWK) e `grep` (com flags `-E` e `-o`).
 - **Compressão e Checksum**: `tar`, `gzip`, `md5sum` (com fallback automático em `cksum`).
-- **Servidor Web Local (Opcional para preview)**: `python3` ou `python` padrão para o subcomando `serve`.
+- **Servidor Web Local (Opcional para preview)**: OpenBSD netcat (`nc -N`), `setsid`, `flock`, `realpath` e `timeout`. Escuta apenas em `127.0.0.1`.
 
 ---
+
+## Execução diretamente no Linux
+
+No Ubuntu ou Debian, prepare as dependências e obtenha o projeto:
+
+```bash
+sudo apt update
+sudo apt install -y git bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc
+git clone https://github.com/matheustheus27/CatalystShellEngine.git
+cd CatalystShellEngine
+chmod +x catalyst.sh
+```
+
+Se já tiver clonado o repositório, entre no diretório existente. Execute:
+
+```bash
+./catalyst.sh all
+./catalyst.sh test
+./catalyst.sh report
+./catalyst.sh serve --port 8080
+```
+
+Abra `http://127.0.0.1:8080` no navegador. Ao terminar, encerre o preview com
+`./catalyst.sh serve --stop`. Os artefatos ficam em `dist/`.
+
+Para gerar o PDF acadêmico, prepare o exportador opcional:
+
+```bash
+sudo apt install -y python3 python3-venv fonts-dejavu-core
+python3 -m venv .venv-report
+.venv-report/bin/python -m pip install reportlab
+CATALYST_PDF_PYTHON=.venv-report/bin/python ./catalyst.sh report --pdf
+```
+
+O resultado fica em `dist/reports/sigaa-report.pdf`. Para outras distribuições,
+utilize pacotes equivalentes; o servidor exige OpenBSD netcat com a opção `-N`.
 
 ## Permissões e Inicialização
 
@@ -43,11 +79,11 @@ source scripts/completion.bash
 | `./catalyst.sh sanitize` | Executa o programa em `sed` para remover espaços residuais em fim de linha e normalizar cabeçalhos Markdown. | `dist/docs/full-document.md` |
 | `./catalyst.sh stats` | Computa contagem de palavras e linhas via `wc`, extrai amostras de cabeçalho/rodapé e grava o sumário estatístico. | `dist/metrics/metrics.txt` |
 | `./catalyst.sh pack` | Compacta os artefatos de distribuição em `.tar.gz`, aplica permissões de segurança octais/simbólicas e gera assinatura `md5sum`. | `dist/releases/catalyst-release-*.tar.gz`, `*.tar.gz.md5` |
-| `./catalyst.sh report` | Gera o documento oficial unificado com o código-fonte numerado linha a linha via `nl -ba` pronto para entrega no SIGAA. | `dist/reports/sigaa-report.md` |
-| `./catalyst.sh test` | Executa a suíte de testes automatizados com 15 asserções (diretórios, parsing, AWK, regex, servidor, MD5). | Saída de testes colorida no console. |
+| `./catalyst.sh report` | Gera o documento oficial unificado com o código-fonte numerado linha a linha via `nl -ba` como fonte para a entrega no SIGAA; exporte o PDF com `report --pdf`. | `dist/reports/sigaa-report.md` |
+| `./catalyst.sh test` | Executa a suíte de testes automatizados com integração e regressões (arquivos, permissões, parsing, HTTP, SHA-256 e relatório). | Saída de testes colorida no console. |
 | `./catalyst.sh watch` | Entra em modo de observação contínua, monitorando `docs/*.md` e recompilando automaticamente a cada salvamento. | Recompilação automática sob demanda. |
 | `./catalyst.sh serve` | Inicializa o servidor HTTP local em segundo plano (*background*), armazenando o PID para controle de ciclo de vida. | Processo em background na porta 8000 (ou customizada). |
-| `./catalyst.sh serve --stop` | Localiza o PID do servidor em execução e envia sinal de término `SIGTERM` (`kill -15`) com fallback para `SIGKILL` (`kill -9`). | Encerra o processo e limpa `/tmp/catalyst_server.pid`. |
+| `./catalyst.sh serve --stop` | Localiza o PID do servidor em execução e envia sinal de término `SIGTERM` (`kill -15`) com fallback para `SIGKILL` (`kill -9`). | Encerra o processo e limpa o estado privado por usuário e projeto em `/tmp/catalyst-*`. |
 | `./catalyst.sh clean` | Limpa com segurança o diretório de distribuição `dist/`, removendo artefatos intermediários. | Esvazia `dist/`. |
 | `./catalyst.sh help` | Imprime a documentação de uso e exemplos práticos formatados no terminal. | Saída padrão. |
 
@@ -64,35 +100,17 @@ source scripts/completion.bash
 ```bash
 ./catalyst.sh test
 ```
-*Saída esperada:*
-```text
-=================================================================
- 🧪 Executando Suíte de Testes Automatizados do Catalyst
-=================================================================
-  Teste 1: Inicialização de diretórios (init_env)... [PASSOU]
-  Teste 2: Permissão 755 no diretório dist... [PASSOU]
-  Teste 3: Consolidação de capítulos (consolidate_docs)... [PASSOU]
-  Teste 4: Arquivo full-document.md gerado e não vazio... [PASSOU]
-  Teste 5: Geração de sumário hierárquico (generate_toc_awk)... [PASSOU]
-  Teste 6: Arquivo summary.md gerado e não vazio... [PASSOU]
-  Teste 7: Auditoria léxica com grep -E (validate_links_regex)... [PASSOU]
-  Teste 8: Cálculo de métricas (compute_statistics)... [PASSOU]
-  Teste 9: Arquivo metrics.txt gerado e não vazio... [PASSOU]
-  Teste 10: Empacotamento de release tar.gz (package_release)... [PASSOU]
-  Teste 11: Tarball de release gerado... [PASSOU]
-  Teste 12: Inicialização do servidor HTTP na porta 8999... [PASSOU]
-  Teste 13: Encerramento do servidor HTTP via sinal kill... [PASSOU]
-  Teste 14: Geração de relatório unificado para o SIGAA... [PASSOU]
-  Teste 15: Arquivo sigaa-report.md gerado... [PASSOU]
-=================================================================
- ✅ Todos os 15 testes passaram com sucesso!
-```
+A suíte copia os fontes para um diretório temporário Linux, escolhe uma porta livre
+e verifica permissões, conteúdo do pacote, checksum SHA-256 e respostas HTTP.
+As regressões incluem arquivos com espaços, diretório vazio, links quebrados,
+âncoras inválidas, portas inválidas, HEAD/404/403/405, reinício e liberação da porta.
+Não depende de um build anterior. A quantidade de testes é informada na execução.
 
 ### 3. Geração do Relatório SIGAA com Código Numerado (`nl -ba`)
 ```bash
 ./catalyst.sh report
 ```
-Gera `dist/reports/sigaa-report.md` unificando a proposta do problema, o código-fonte integral de `catalyst.sh` com cada linha numerada pelo utilitário `nl -ba` e a planilha de 20 conceitos com números de linhas auditados.
+Gera `dist/reports/sigaa-report.md` unificando a proposta do problema, o código-fonte integral de `catalyst.sh` com cada linha numerada pelo utilitário `nl -ba` e a planilha de 20 conceitos com números de linhas calculados a partir do código atual. Também inclui o módulo do servidor e a saída real do `cloc`. Para o PDF obrigatório use `report --pdf` com Python/ReportLab em ambiente isolado, conforme o documento acadêmico da raiz.
 
 ### 4. Modo Observador com Live-Reload
 ```bash
@@ -135,7 +153,7 @@ Se a mensagem `A porta 8000 ja possui um processo ativo` for exibida, execute:
 ```bash
 ./catalyst.sh serve --stop
 ```
-O orquestrador utilizará `ps` e `kill` para encerrar o processo registrado ou liberará a porta com `fuser -k 8000/tcp`.
+O orquestrador utilizará `ps` e `kill` para encerrar o processo registrado A ferramenta não encerra processos de terceiros; escolha outra porta se necessário.
 
 ### Caracteres CRLF (Windows / DOS)
 Caso execute o script em ambiente Linux após clonar no Windows e receber mensagens de erro como `\r: command not found`, converta as quebras de linha:

@@ -66,8 +66,9 @@ worker() {
     trap 'exit 0' INT TERM
     while true; do
         # EOF fecha a conexao; timeout limita clientes com cabecalhos incompletos.
-        timeout 10 nc -N -l 127.0.0.1 "$PORT" < "$fifo" | respond > "$fifo" || true
-        sleep 0.05
+        if ! timeout --foreground 10 nc -N -l 127.0.0.1 "$PORT" < "$fifo" | respond > "$fifo"; then
+            sleep 0.1
+        fi
     done
 }
 

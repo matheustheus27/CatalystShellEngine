@@ -60,3 +60,8 @@ desktop.ini
 .agents/
 .agent/
 scratch/
+
+# Ambiente opcional do exportador academico
+.venv-report/
+__pycache__/
+*.pyc

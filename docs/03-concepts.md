@@ -4,7 +4,7 @@
 
 O enunciado do **Trabalho Prático - TEFC: Shell Scripting** estabelece 20 conceitos fundamentais de desenvolvimento em ambiente Unix/Bash, exigindo a utilização comprovada de no mínimo 15 conceitos em um script com pelo menos 30 linhas de código.
 
-O **Catalyst Shell Engine** não apenas supera o limite de linhas com folga extraordinária (mais de 550 linhas de código efetivo), como também **implementa com sucesso a totalidade dos 20 conceitos previstos no enunciado**. Cada conceito desempenha um papel genuíno e indispensável na arquitetura do sistema.
+O **Catalyst Shell Engine** demonstra os 20 conceitos do enunciado considerando o script principal e o módulo de servidor. A planilha gerada por `report` é a referência para arquivos e linhas atuais; a contagem de código vem da execução real do `cloc`.
 
 Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação prática no código-fonte de [`catalyst.sh`](#04manualoperacionaldacli).
 
@@ -34,8 +34,8 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
   * `mkdir -p`: Criação recursiva e idempotente da pasta `dist/`.
   * `basename` e `dirname`: Extração de nomes de arquivos e caminhos de diretórios pais.
   * `tar` e `gzip`: Empacotamento compactado do bundle final de distribuição: `tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" ...`.
-  * `md5sum` (com fallback em `cksum`): Geração da assinatura criptográfica imutável do release.
-  * `fuser`: Inspeção e liberação de portas TCP (`fuser -k "${port}/tcp"`).
+  * `md5sum` (com fallback em `cksum`): Checksum adicional de compatibilidade; SHA-256 é o checksum principal do release.
+  * O servidor verifica portas ocupadas sem encerrar processos de terceiros.
 
 ### 04. Permissões de Arquivos (Aula: Sistema de arquivos)
 - **Conceitos**: `chmod` (representação octal ou simbólica)
@@ -46,19 +46,19 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
 ### 05. Controle de Processos (Aula: Processos)
 - **Conceitos**: `ps, top, jobs, bg, fg, pstree, vmstat, xload ou tload`
 - **Aplicação no Projeto**:
-  * `ps -p "$active_pid"`: Inspeciona a tabela de processos do kernel para checar se o servidor web HTTP local continua vivo antes de encerrá-lo ou emitir alertas.
-  * `jobs -l`: Lista os processos em execução em background associados à sessão shell do terminal.
+  * `ps -p "$pid"`: Inspeciona a tabela de processos do kernel para checar se o servidor web HTTP local continua vivo antes de encerrá-lo ou emitir alertas.
+  * O código do gerenciamento de processos está em `scripts/core/server.sh`.
 
 ### 06. Sinais do Sistema Operacional (Aula: Processos)
 - **Conceitos**: `kill ou killall`
 - **Aplicação no Projeto**:
-  * `kill -15 "$active_pid"`: Envio do sinal padrão `SIGTERM` para encerramento gracioso do servidor web.
-  * `kill -9 "$active_pid"`: Fallback imediato com `SIGKILL` caso o processo não responda ao término gracioso dentro do timeout.
+  * `kill -15 -- "-$pid"`: Envio do sinal padrão `SIGTERM` para encerramento gracioso do servidor web.
+  * `kill -9 -- "-$pid"`: Fallback imediato com `SIGKILL` caso o processo não responda ao término gracioso dentro do timeout.
 
 ### 07. Redirecionamentos de Entrada e Saída (Aula: Entradas, saídas e Redirecionamentos)
 - **Conceitos**: Redirecionamento da entrada (`<`), saída (`>`), saída de adição (`>>`) e saída de erro padrão (`2>`, `>&2`)
 - **Aplicação no Projeto**:
-  * `> "$METRICS_FILE"`: Truncamento e inicialização limpa do relatório de métricas.
+  * `> "$METRICS_FILE"`: Gravação do relatório calculado; a inicialização preserva métricas existentes.
   * `echo "..." >&2`: Emissão de mensagens de diagnóstico na saída de erro padrão (*stderr*).
   * `2>/dev/null`: Supressão de mensagens de erro irrelevantes durante varreduras silenciosas.
   * `wc -l < "$OUTPUT_DOC"`: Alimentação direta da entrada padrão (*stdin*) do `wc` para evitar a impressão do nome do arquivo.
@@ -90,7 +90,7 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
   * `$1`, `$2`: Captura dos subcomandos principais na CLI (`build`, `validate`, `serve`).
   * `$#`: Verificação da contagem total de argumentos passados.
   * `$@`: Repasse transparente de listas completas de flags e opções para funções internas (`manage_server "$@"`).
-  * `$!`: Captura do Process ID (PID) exato do processo lançado em segundo plano (`python3 -m http.server ... &`).
+  * `$!`: Captura do Process ID (PID) exato do processo lançado em segundo plano (`setsid bash "$SCRIPT" worker ... &`).
   * `$?`: Captura e propagação do código de retorno da última operação (`exit $?`).
 
 ### 12. Atributos de Variáveis (Aula: Parâmetros e Variáveis)
@@ -192,4 +192,4 @@ Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação p
         printf("      %d.%d.%d. [%s](#%s)\n", h1, h2, h3, title, anchor);
     }
     ```
-  * Identificação de níveis de títulos, cálculo autônomo da numeração decimal hierárquica e conversão para âncoras navegáveis compatíveis com GitHub e HTML5.
+  * Identificação de níveis de títulos, cálculo autônomo da numeração decimal hierárquica e conversão para âncoras navegáveis consistentes com a interface HTML gerada.

@@ -12,7 +12,7 @@ O design arquitetural do **Catalyst Shell Engine** fundamenta-se nos princípios
 
 ## Diagrama de Fluxo de Dados do Pipeline
 
-O pipeline do Catalyst Shell Engine opera em **7 estágios sequenciais**, garantindo validação, higienização e empacotamento determinístico:
+O pipeline do Catalyst Shell Engine opera em **7 estágios sequenciais**, garantindo validação, higienização e empacotamento dos artefatos:
 
 ```mermaid
 flowchart TD
@@ -23,16 +23,16 @@ flowchart TD
 
     subgraph PROCESSING ["2. Processamento Léxico & Parsing"]
         C --> D["🧹 sed Sanitizer (Higienização)"]
-        D --> E["📄 dist/full-document.md"]
+        D --> E["📄 dist/docs/full-document.md"]
         E --> F["📑 awk TOC Engine (Sumário 3 Níveis)"]
-        F --> G["📄 dist/summary.md"]
+        F --> G["📄 dist/docs/summary.md"]
     end
 
     subgraph AUDIT ["3. Auditoria & Telemetria"]
         E --> H["🔍 grep -E Regex Link Auditor"]
         H --> I["✅ Validação de Ativos Locais"]
         E --> J["📊 wc & head/tail Metrics Engine"]
-        J --> K["📄 dist/metrics.txt"]
+        J --> K["📄 dist/metrics/metrics.txt"]
     end
 
     subgraph ARTIFACTS ["4. Publicação & Distribuição"]
@@ -46,13 +46,13 @@ flowchart TD
         K --> N
         M --> N
         N --> O["🔒 chmod 755/644"]
-        O --> P["🔑 md5sum Checksum Generator"]
-        P --> Q["📦 dist/catalyst-release-1.0.0.tar.gz"]
+        O --> P["🔑 SHA-256 Checksum Generator"]
+        P --> Q["📦 dist/releases/catalyst-release-1.0.0.tar.gz"]
     end
 
     subgraph LIFECYCLE ["5. Gerenciamento de Processos"]
-        Q --> R["🚀 python3 http.server (Background $)"]
-        R --> S["📋 PID Tracking (/tmp/catalyst_server.pid)"]
+        Q --> R["🚀 Bash + OpenBSD netcat (background)"]
+        R --> S["📋 Estado privado por usuario e projeto"]
         S --> T["🛑 kill -15 / kill -9 Termination"]
     end
 ```
@@ -64,7 +64,7 @@ flowchart TD
 ### Estágio 1: Preparação do Ambiente (`init_env`)
 - Criação garantida do diretório de saída `dist/` com controle de erro (`mkdir -p "$DIST_DIR" || exit 1`).
 - Definição de permissões octais estritas (`chmod 755 "$DIST_DIR"`).
-- Truncamento e inicialização limpa de relatórios de métricas residuais com redirecionamento vazio (`> "$METRICS_FILE"`).
+- Criação do arquivo de métricas sem truncar resultados de subcomandos anteriores (`touch "$METRICS_FILE"`).
 
 ### Estágio 2: Consolidação e Sanitização Léxica (`consolidate_docs`)
 - Varredura determinística de todos os capítulos via `sort -V` (ordenação natural que preserva a sequência `00`, `01`, `02`... `10`).
@@ -84,7 +84,7 @@ flowchart TD
 ### Estágio 4: Auditoria de Links e Imagens com Expressões Regulares (`validate_links_regex`)
 - Varre o documento unificado utilizando **`grep -E -o '\[[^]]+\]\(([^)]+)\)'`**.
 - Filtra links externos (`http://`, `https://`) e âncoras locais (`#`), isolando referências a caminhos de arquivos relativos.
-- Testa a existência de cada ativo local referenciado (`[ -f "$target" ] || [ -d "$target" ]`), alertando preventivamente contra documentações quebradas.
+- Testa a existência de cada ativo local referenciado (`[ -f "$target" ] || [ -d "$target" ]`), retornando erro quando encontra referências quebradas. Âncoras do documento também são verificadas; exemplos em blocos e trechos de código são ignorados.
 
 ### Estágio 5: Cálculo Estatístico de Métricas e Integridade (`compute_statistics`)
 - Extração de métricas quantitativas de volume utilizando `wc -l` (linhas) e `wc -w` (palavras).
@@ -94,12 +94,12 @@ flowchart TD
 ### Estágio 6: Geração de Interface Web Interativa com ChatBot (`generate_html_preview`)
 - Criação autônoma do arquivo `dist/index.html` (único arquivo na raiz de distribuição).
 - Interface moderna inspirada no sistema de design **GlassHub Quasar** (vidro fosco, tema escuro, variáveis CSS HSL, painel lateral responsivo e renderizador Markdown dinâmico com fallback).
-- **Catalyst DocBot (Assistente Virtual Integrado)**: Motor de recuperação de informação 100% offline em Vanilla JS, com busca por seções, deep linking, botões de ação e comandos de terminal (`/help`, `/conceitos`, `/stats`, `/benchmark`).
+- **Catalyst DocBot (Assistente Virtual Integrado)**: Motor local de recuperação de informação em Vanilla JS; as bibliotecas de renderização são carregadas por CDN, com busca por seções, deep linking, botões de ação e comandos de terminal (`/help`, `/conceitos`, `/stats`, `/benchmark`).
 
 ### Estágio 7: Empacotamento e Certificação de Release (`package_release`)
 - Compactação e compressão gzip de todos os artefatos gerados (`tar -czf`).
 - Atribuição de permissões simbólicas de segurança ao bundle (`chmod u=rw,go=r`).
-- Geração automatizada de hash criptográfico de integridade (`md5sum` ou `cksum`), salvando a assinatura em `dist/releases/catalyst-release-*.tar.gz.md5`.
+- Geração automatizada de checksum SHA-256, com MD5 adicional por compatibilidade, salvando a assinatura em `dist/releases/catalyst-release-*.tar.gz.md5`.
 
 ---
 
@@ -107,7 +107,7 @@ flowchart TD
 
 ```text
 CatalystShellEngine/
-├── catalyst.sh               # Orquestrador mestre e CLI unificada (550+ linhas de Shell)
+├── catalyst.sh               # Orquestrador mestre e CLI unificada
 ├── docs/                     # Fonte primária da documentação técnica dividida em capítulos
 │   ├── 00-cover.md           # Capa oficial e metadados institucionais
 │   ├── 01-overview.md        # Visão geral, contexto do GlassHub e matriz de capacidades
@@ -127,9 +127,11 @@ CatalystShellEngine/
 │   │   └── sigaa-report.md   # Relatório unificado com código numerado para o SIGAA
 │   └── releases/             # Subpasta de empacotamento e distribuição
 │       ├── catalyst-release-*.tar.gz     # Bundle empacotado para distribuição
-│       └── catalyst-release-*.tar.gz.md5 # Hash MD5 de integridade imutável
+│       └── catalyst-release-*.tar.gz.md5 # Checksum MD5 de compatibilidade
 ├── scripts/                  # Biblioteca modular com componentes especializados
 │   ├── core/                 # Módulos isolados de parsing, validação e sanitização
 │   └── utils/                # Utilitários de logging colorido e formatação ANSI
 └── CEFET_REPORT.md           # Relatório acadêmico oficial com planilha de conformidade
 ```
+
+O orquestrador executa o módulo de servidor e o gerador acadêmico. Os módulos de parser, sanitizer, validator e packager são auxiliares de referência e ainda não são carregados pela CLI. A interface usa uma convenção própria de âncoras, distinta da convenção do GitHub.
