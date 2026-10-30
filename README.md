@@ -194,7 +194,7 @@ export SOURCE_DATE_EPOCH=1700000000
 ./catalyst.sh pack
 ```
 
-Use o mesmo epoch, conteúdo e versões das ferramentas nas repetições. Sem essa variável, métricas e relatório continuam registrando a data da execução e podem mudar de conteúdo; o empacotamento do mesmo snapshot permanece determinístico. Relatórios preexistentes também fazem parte dos bytes do release.
+Use o mesmo epoch, conteúdo e versões das ferramentas nas repetições. Sem essa variável, métricas e relatório continuam registrando a data da execução e podem mudar de conteúdo, o empacotamento do mesmo snapshot permanece determinístico. Relatórios preexistentes também fazem parte dos bytes do release.
 
 Os testes reais usam Playwright/Chromium, além do jsdom existente. Depois de instalar as dependências de desenvolvimento e o navegador pelo procedimento acima:
 
@@ -203,4 +203,4 @@ npm run test:browser
 npm run test:browser -- --project
 ```
 
-O segundo comando também testa a publicação principal já gerada. São verificados HTTP nos dois backends, carregamento de CSS/JS, navegação, tema persistido, foco, viewport móvel, impressão, Mermaid e CSP. Capturas ficam em `.catalyst/browser-artifacts/`; falhas geram screenshot e trace. O navegador é necessário apenas para desenvolvimento, não para `all` ou para consultar a publicação.
+O segundo comando também testa a publicação principal já gerada. São verificados HTTP nos dois backends, carregamento de CSS/JS, navegação, tema persistido, foco, viewport móvel, impressão, Mermaid e CSP. Capturas ficam em `.catalyst/browser-artifacts/`, falhas geram screenshot e trace. O navegador é necessário apenas para desenvolvimento, não para `all` ou para consultar a publicação.
