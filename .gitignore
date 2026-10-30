@@ -66,5 +66,7 @@ __pycache__/
 *.pyc
 
 # Staging, geracoes publicadas, locks e ferramentas locais
-/.catalyst/
+.catalyst/
+.catalyst-*/
+*.validation.md
 /node_modules/

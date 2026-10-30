@@ -2,7 +2,7 @@
 # GNU AWK indexa os fontes antes de reescrever referencias entre capitulos.
 consolidate_documents() {
     local docs_dir="$1" output_file="$2" base_dir="$3" doc relative
-    local work="${output_file}.parser.tmp" program="$base_dir/scripts/core/markdown.awk"
+    local work="${output_file}.parser.tmp" program="$SCRIPTS_DIR/core/markdown.awk"
     local -a chapters=() markdown=()
     mkdir -p "$work"
     : > "$work/chapters"
@@ -22,6 +22,7 @@ consolidate_documents() {
     done < <(find "$docs_dir" -type f -name '*.md' -print0 | sort -zV)
     if [ "$TOTAL_DOCS" -eq 0 ]; then
         echo "Nenhum capitulo Markdown encontrado em $docs_dir" >&2
+        printf 'ERROR\t%s\t0\t-\tNenhum capitulo Markdown encontrado\n' "$(basename "$docs_dir")" > "$(dirname "$output_file")/links.tsv"
         return 1
     fi
     [ $TOTAL_DOCS -gt 0 ] && echo "Total de capitulos detectados: $TOTAL_DOCS"
@@ -31,7 +32,7 @@ consolidate_documents() {
         [[ "$relative" != *$'\n'* && "$relative" != *$'\t'* ]] || continue
         printf '%s\n' "$relative" >> "$work/files"
         if [[ "$doc" == *.md && "$doc" != "$docs_dir/"* ]]; then markdown+=("$doc"); fi
-    done < <(find "$base_dir" -mindepth 1         \( -name '.*' -o -name node_modules -o -path "$base_dir/dist" \) -prune -o -type f -print0)
+    done < <(find "$base_dir" -mindepth 1 \( -name '.*' -o -name node_modules -o -path "$PUBLISHED_DIR" -o -path "$base_dir/dist" -o -path "$AUDIT_FILE" \) -prune -o -type f -print0)
     local headings_file links_file
     headings_file="$(dirname "$output_file")/headings.tsv"
     links_file="$(dirname "$output_file")/links.tsv"

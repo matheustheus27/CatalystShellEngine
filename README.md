@@ -25,7 +25,7 @@ O programa recebe capítulos fragmentados em `docs/`, ordena os arquivos, normal
 1. **Consolidação de Capítulos**: Descoberta recursiva em `docs/` e ordenação natural com `sort -zV`.
 2. **Sumário Hierárquico Numerado**: GNU AWK reconhece H1-H6/Setext e gera IDs únicos para navegação.
 3. **Normalização de Texto**: sed converte CRLF sem remover espaços significativos ou alterar os fontes.
-4. **Validação de Referências Locais**: Regex, índice por capítulo e caminhos canônicos verificam links, fragmentos e ativos.
+4. **Validação de Referências Locais**: Regex, índice por capítulo e caminhos canônicos verificam links, fragmentos e ativos, a auditoria Markdown informa arquivo, linha, destino e motivo.
 5. **Métricas de Publicação**: `wc`, `head` e `tail` produzem contagens e amostras.
 6. **Empacotamento de Release**: `.tar.gz` com permissões explícitas, SHA-256 e checksum de compatibilidade.
 7. **Preview com Controle de Processos**: Backend Bash/netcat e modo concorrente Python opcional, com porta, PID e sinais.
@@ -53,11 +53,28 @@ chmod +x catalyst.sh
 Se já possui uma cópia, entre nela e execute os dois últimos comandos. Abra **http://127.0.0.1:8000**. Use HTTP: abrir `dist/index.html` por `file://` impede o carregamento normal dos documentos pela interface.
 
 ```bash
-./catalyst.sh serve --restart   # Reinicia o servidor; mantém porta e backend.
+./catalyst.sh serve --restart   # Reinicia o servidor, mantém porta e backend.
 ./catalyst.sh serve --stop      # Encerra o preview.
 ```
 
 O [manual de uso](docs/04-usage-guide.md) reúne instalação no Linux, execução no WSL, comandos, exemplos e solução de problemas.
+
+---
+
+## 🗂️ Outros Projetos, Auditoria e Demonstração
+
+As opções `--docs` e `--output` selecionam capítulos e publicação, com caminhos relativos ao diretório atual ou absolutos. A pasta pai de `--docs` é a raiz dos ativos. Sem opções, permanecem `docs/` e `dist/` do motor.
+
+```bash
+./catalyst.sh all --docs examples/demo/docs --output /tmp/catalyst-demo-site
+./catalyst.sh serve --output /tmp/catalyst-demo-site --port 8081
+./catalyst.sh serve --output /tmp/catalyst-demo-site --stop
+./catalyst.sh demo
+```
+
+O relatório da última tentativa fica ao lado da saída: `/tmp/catalyst-demo-site.validation.md`, ou `dist.validation.md` no caso padrão. Ele registra referências, arquivos, linhas e motivos de falha. Uma publicação válida também inclui `reports/validation.md`. A auditoria mais recente pode reprovar enquanto a última publicação válida continua intacta.
+
+O [exemplo de demonstração](examples/demo/README.md) reúne títulos repetidos, subpastas, imagem, arquivo com espaços e referências inválidas fora da entrada normal. `demo` executa o roteiro em uma cópia temporária e verifica a preservação da publicação. As saídas têm locks e estado próprios, não selecione como destino uma pasta com arquivos alheios ao Catalyst.
 
 ---
 
@@ -68,21 +85,21 @@ O núcleo de geração executa em **Bash e utilitários GNU/Linux**, com program
 - **Entrada:** arquivos `docs/**/*.md`, referências locais e ativos do projeto.
 - **Processamento:** catálogo em ordem natural, normalização CRLF, índice de títulos, sumário numerado, validação com regex e caminhos canônicos, métricas e empacotamento.
 - **Saída:** Markdown consolidado, metadados, HTML, ativos locais, métricas e `.tar.gz` com SHA-256.
-- **Operação:** argumentos de linha de comando; nenhum pedido de dados pelo teclado. Os usos de `read` consomem arquivos, pipes ou requisições HTTP.
+- **Operação:** argumentos de linha de comando, nenhum pedido de dados pelo teclado. Os usos de `read` consomem arquivos, pipes ou requisições HTTP.
 
-A interface gerada usa HTML, CSS e JavaScript, com Marked, DOMPurify e Mermaid distribuídos localmente. O preview padrão usa Bash e OpenBSD netcat. Python é usado no backend concorrente opcional, nos testes e no exportador PDF; Node/npm são ferramentas de desenvolvimento para os testes da interface. Essas partes complementam o pipeline acadêmico em Shell.
+A interface gerada usa HTML, CSS e JavaScript, com Marked, DOMPurify e Mermaid distribuídos localmente. O preview padrão usa Bash e OpenBSD netcat. Python é usado no backend concorrente opcional, nos testes e no exportador PDF, Node/npm são ferramentas de desenvolvimento para os testes da interface. Essas partes complementam o pipeline acadêmico em Shell.
 
 ---
 
 ## 🚀 Fluxo de Trabalho
 
-1. Edite os capítulos em `docs/`. Use prefixos como `01-`, `02-` e `10-` para orientar a ordem natural; subpastas também são percorridas.
+1. Edite os capítulos em `docs/`. Use prefixos como `01-`, `02-` e `10-` para orientar a ordem natural, subpastas também são percorridas.
 2. Execute `./catalyst.sh validate` para verificar os fontes sem alterar a publicação.
 3. Execute `./catalyst.sh all` para compilar, validar e gerar o pacote.
 4. Consulte a documentação com `./catalyst.sh serve` ou atualize o navegador se o servidor já estiver ativo.
 5. Gere a entrega acadêmica separadamente com `./catalyst.sh report --pdf`, após preparar o exportador.
 
-`build`, `toc`, `sanitize` e `stats` reconstroem um snapshot consistente. `pack` e `report` aproveitam o snapshot existente quando completo; execute `all` depois de editar os fontes e antes da entrega final. `all` não gera o relatório acadêmico por conta própria.
+`build`, `toc`, `sanitize` e `stats` reconstroem um snapshot consistente. `pack` e `report` aproveitam o snapshot existente quando completo, execute `all` depois de editar os fontes e antes da entrega final. `all` não gera o relatório acadêmico por conta própria.
 
 ---
 
@@ -101,7 +118,7 @@ CatalystShellEngine/
 ├── templates/                # index.html, app.css, app.js e csp.txt
 ├── vendor/                   # Bibliotecas da interface, licenças e checksums
 ├── images/                   # Ativos do projeto
-├── .catalyst/                # Staging, locks e gerações; não editar manualmente
+├── .catalyst/                # Staging, locks e gerações, não editar manualmente
 └── dist/                     # Saída gerada
     ├── index.html
     ├── docs/                 # full-document.md, summary.md e índices JSON/TSV
@@ -120,7 +137,7 @@ No Linux, a publicação troca atomicamente um link para a geração concluída.
 
 - **Entrada e saída por arquivos**: capítulos Markdown e ativos geram uma publicação organizada em `dist/`.
 - **Operação não interativa**: argumentos da CLI, sem solicitação de dados pelo teclado.
-- **Conceitos documentados**: vinte aplicações com evidências resolvidas nos fontes atuais; o mínimo solicitado é quinze.
+- **Conceitos documentados**: vinte aplicações com evidências resolvidas nos fontes atuais, o mínimo solicitado é quinze.
 - **Contagem de código**: execução real do cloc no relatório, com a categoria Shell identificada para conferir o mínimo de trinta linhas.
 - **Entrega acadêmica**: código numerado, planilha com seis colunas e PDF gerado separadamente por `report --pdf`.
 

@@ -79,7 +79,9 @@ function record(kind,file,line,target,message) {
     print kind "\t" file "\t" line "\t" target "\t" message > links
 }
 function url(raw,file,line,    path,fragment,p,candidate,id,sc) {
-    if(raw ~ /^(https?:\/\/|mailto:)/) return raw
+    if(raw ~ /^(https?:\/\/|mailto:)/) {
+        record("EXTERNAL",file,line,raw,"URL externa nao consultada"); return raw
+    }
     if(raw ~ /^[A-Za-z][A-Za-z0-9+.-]*:/ || raw ~ /^\/\//) {
         record("ERROR",file,line,raw,"Protocolo nao permitido"); return "#"
     }
@@ -101,7 +103,9 @@ function url(raw,file,line,    path,fragment,p,candidate,id,sc) {
             else if(candidate==file && fragment in global_anchor) id=global_anchor[fragment]
             else { record("ERROR",file,line,raw,"Ancora inexistente"); return raw }
         }
-        if(chapters[candidate]) return "#" id
+        if(chapters[candidate]) {
+            record("LINK",file,line,raw,"Destino #" id); return "#" id
+        }
     } else if(fragment!="") {
         record("ERROR",file,line,raw,"Fragmento so pode ser validado em arquivo Markdown"); return raw
     }

@@ -60,7 +60,7 @@ O núcleo reúne Bash, GNU AWK, sed e utilitários GNU/Linux. A interface web e 
 5. [**Testes e medições**](05-benchmarks.md): validação funcional e método de medição.
 6. [**Conclusão e resultados**](06-conclusion.md): limites e continuidade.
 
-O [README](../README.md) oferece um início rápido. O [guia acadêmico](../CEFET_REPORT.md) concentra a entrega e a apresentação. O relatório com planilha, números de linha e código integral é gerado por `./catalyst.sh report`; sua versão PDF exige `report --pdf`.
+O [README](../README.md) oferece um início rápido. O [guia acadêmico](../CEFET_REPORT.md) concentra a entrega e a apresentação. O relatório com planilha, números de linha e código integral é gerado por `./catalyst.sh report`, sua versão PDF exige `report --pdf`.
 
 ---
 
@@ -73,4 +73,8 @@ Este manual não substitui o enunciado da disciplina. As evidências de código 
 ---
 
 > [!NOTE]
-> O livro web consolidado é gerado pelo próprio **Catalyst Shell Engine** a partir destes capítulos. Use `./catalyst.sh build` para atualizar a publicação e `./catalyst.sh all` para gerar também o release. A identidade visual é preservada nos documentos de autoria; os recursos da interface offline seguem os limites descritos no manual.
+> O livro web consolidado é gerado pelo próprio **Catalyst Shell Engine** a partir destes capítulos. Use `./catalyst.sh build` para atualizar a publicação e `./catalyst.sh all` para gerar também o release. A identidade visual é preservada nos documentos de autoria, os recursos da interface offline seguem os limites descritos no manual.
+
+## 🧪 Exemplo de Demonstração
+
+O comando `./catalyst.sh demo` apresenta o fluxo em uma cópia temporária, com títulos repetidos, subpastas, ativos e referências inválidas. O exemplo versionado fica em `examples/demo/`. O [manual operacional](04-usage-guide.md) explica as opções `--docs` e `--output` e a auditoria Markdown da última tentativa.

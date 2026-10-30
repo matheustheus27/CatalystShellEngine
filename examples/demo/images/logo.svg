@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="96" viewBox="0 0 360 96">
+  <rect width="360" height="96" rx="18" fill="#0d1117"/>
+  <circle cx="48" cy="48" r="26" fill="none" stroke="#58a6ff" stroke-width="3"/>
+  <circle cx="48" cy="48" r="7" fill="#bc8cff"/>
+  <text x="92" y="44" fill="#f0f6fc" font-family="sans-serif" font-size="21">Catalyst Shell Engine</text>
+  <text x="92" y="68" fill="#8b949e" font-family="sans-serif" font-size="15">Demonstração documental</text>
+</svg>

@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 # Cada escritor trabalha em uma copia privada; apenas o commit altera dist/.
+publication_state() {
+    local output="$1" parent
+    parent=$(dirname "$output")
+    if [ "$(basename "$output")" = dist ]; then printf '%s/.catalyst\n' "$parent"
+    else printf '%s/.catalyst-%s\n' "$parent" "$(printf '%s' "$output" | sha256sum | cut -c1-16)"; fi
+}
+
 sync_output_tree() {
     local source="$1" destination="$2" entry relative target scratch
     mkdir -p "$destination" || return 1
@@ -44,6 +51,13 @@ recover_publication() {
 cleanup_transaction() {
     local status="$1"
     trap - EXIT
+    if [ "${VALIDATION_PENDING:-0}" = 1 ] && [ -n "$STAGE_DIR" ]; then
+        mkdir -p "$STAGE_DIR/docs"
+        if [ ! -f "$STAGE_DIR/docs/links.tsv" ] || ! grep -q '^ERROR' "$STAGE_DIR/docs/links.tsv"; then
+            printf 'ERROR\t%s\t0\t-\tFalha antes de concluir a analise de referencias\n' "$(basename "$DOCS_DIR")" >> "$STAGE_DIR/docs/links.tsv"
+        fi
+        write_validation_report "$STAGE_DIR/docs/links.tsv" "$AUDIT_FILE" || echo 'Falha ao gravar auditoria.' >&2
+    fi
     if [ -f "$STATE_DIR/in-progress" ]; then
         if sync_output_tree "$STATE_DIR/previous" "$PUBLISHED_DIR"; then
             rm -f "$STATE_DIR/in-progress"
@@ -67,7 +81,7 @@ cleanup_transaction() {
 }
 
 begin_transaction() {
-    STATE_DIR="$BASE_DIR/.catalyst"
+    STATE_DIR=$(publication_state "$PUBLISHED_DIR")
     mkdir -p "$STATE_DIR"
     # Arquivo estavel: nao remover o lock depois do uso (evita locks em inodes distintos).
     exec 9>"$STATE_DIR/build.lock"
@@ -94,7 +108,7 @@ publish_transaction() {
     local mode="${CATALYST_PUBLISH_MODE:-auto}" filesystem previous_target="" generation
     case "$mode" in
         auto)
-            filesystem=$(stat -f -c %T "$BASE_DIR")
+            filesystem=$(stat -f -c %T "$(dirname "$PUBLISHED_DIR")")
             case "$filesystem" in
                 v9fs|9p|drvfs) mode=directory ;;
                 *) mode=symlink ;;
@@ -110,7 +124,7 @@ publish_transaction() {
         mv -T "$STAGE_DIR" "$generation"
         STAGE_DIR="$generation"
         PENDING_LINK="$STATE_DIR/pending.${generation##*.}"
-        ln -s ".catalyst/$(basename "$generation")" "$PENDING_LINK"
+        ln -s "$(realpath --relative-to="$(dirname "$PUBLISHED_DIR")" "$generation")" "$PENDING_LINK"
         # Migracao unica de dist/ legado: protegida pelo lock de publicacao.
         if [ -d "$PUBLISHED_DIR" ] && [ ! -L "$PUBLISHED_DIR" ]; then
             rm -rf -- "$STATE_DIR/previous"
@@ -149,7 +163,10 @@ run_transaction() (
     begin_transaction "$command"
     run_pipeline "$@"
     # validate audita os fontes atuais sem modificar a ultima publicacao.
-    if [ "$command" != validate ]; then publish_transaction; fi
+    if [ "$command" != validate ]; then
+        printf 'Catalyst Shell Engine output v1\n' > "$STAGE_DIR/.catalyst-output"
+        publish_transaction
+    fi
 )
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

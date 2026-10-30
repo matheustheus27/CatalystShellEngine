@@ -2,9 +2,9 @@
 
 ## Evidências e contagem
 
-O enunciado solicita pelo menos 30 linhas de código Shell verificadas por `cloc` e ao menos 15 conceitos distintos. O projeto documenta vinte conceitos da CLI e dos módulos executados. Cada item abaixo apresenta uma aplicação real; não é uma lista de comandos que o programa deveria usar.
+O enunciado solicita pelo menos 30 linhas de código Shell verificadas por `cloc` e ao menos 15 conceitos distintos. O projeto documenta vinte conceitos da CLI e dos módulos executados. Cada item abaixo apresenta uma aplicação real, não é uma lista de comandos que o programa deveria usar.
 
-A referência oficial de arquivo e linha é `dist/reports/sigaa-report.md`, produzido por `./catalyst.sh report`. O gerador procura os trechos nos fontes atuais, falha se uma evidência desaparecer, executa `cloc` e inclui o código integral numerado por `nl -ba`. A planilha possui as seis colunas do enunciado. A saída do cloc discrimina Shell, AWK e Python; a categoria Shell deve ser examinada para o mínimo exigido.
+A referência oficial de arquivo e linha é `dist/reports/sigaa-report.md`, produzido por `./catalyst.sh report`. O gerador procura os trechos nos fontes atuais, falha se uma evidência desaparecer, executa `cloc` e inclui o código integral numerado por `nl -ba`. A planilha possui as seis colunas do enunciado. A saída do cloc discrimina Shell, AWK e Python, a categoria Shell deve ser examinada para o mínimo exigido.
 
 Os usos de `read` documentados recebem arquivos, pipes e HTTP, sem entrada pelo teclado. A [entrega acadêmica](../CEFET_REPORT.md) explica a exportação e a revisão final.
 
@@ -40,7 +40,7 @@ O bloco de métricas em `catalyst.sh` termina com `> "$METRICS_FILE"`. `wc -l < 
 
 ### 08. Pipes e substituição de processo
 
-`scripts/core/parser.sh` alimenta o laço de capítulos com `done < <(find ... -print0 | sort -zV)`. O pipe conecta descoberta e ordenação; a substituição de processo entrega o fluxo ao laço sem perder o contador em uma subshell do pipe.
+`scripts/core/parser.sh` alimenta o laço de capítulos com `done < <(find ... -print0 | sort -zV)`. O pipe conecta descoberta e ordenação, a substituição de processo entrega o fluxo ao laço sem perder o contador em uma subshell do pipe.
 
 ### 09. Expansões do Shell
 
@@ -56,11 +56,11 @@ A CLI interpreta `$1`, `$#` e `"${@:2}"`. O servidor captura o PID do processo l
 
 ### 12. Atributos de variáveis e funções
 
-`readonly APP_NAME` protege uma constante; `export CATALYST_ENV` disponibiliza uma variável aos filhos; `declare -i TOTAL_DOCS=0` declara um inteiro. Arrays armazenam capítulos e artefatos. Funções como `build_snapshot` e `package_release` delimitam responsabilidades.
+`readonly APP_NAME` protege uma constante, `export CATALYST_ENV` disponibiliza uma variável aos filhos, `declare -i TOTAL_DOCS=0` declara um inteiro. Arrays armazenam capítulos e artefatos. Funções como `build_snapshot` e `package_release` delimitam responsabilidades.
 
 ### 13. Expansões avançadas de parâmetros
 
-`COMMAND="${1:-help}"` fornece a operação padrão. No servidor, `${target%%\?*}` remove a query da URL e `${target#/}` retira a barra inicial. No parser, `${doc#"$base_dir/"}` obtém o caminho relativo.
+`COMMAND="${COMMAND:-help}"`, em `scripts/core/cli-options.sh`, fornece a operação padrão após interpretar as opções. No servidor, `${target%%\?*}` remove a query da URL e `${target#/}` retira a barra inicial. No parser, `${doc#"$base_dir/"}` obtém o caminho relativo.
 
 ### 14. Testes condicionais
 
@@ -68,7 +68,7 @@ A CLI interpreta `$1`, `$#` e `"${@:2}"`. O servidor captura o PID do processo l
 
 ### 15. Seleção com case
 
-`case "$COMMAND" in`, em `catalyst.sh`, seleciona a operação. Outro `case` trata opções de `serve`; no servidor, padrões de extensão definem o tipo de conteúdo HTTP.
+`case "$COMMAND" in`, em `catalyst.sh`, seleciona a operação. Outro `case` trata opções de `serve`, no servidor, padrões de extensão definem o tipo de conteúdo HTTP.
 
 ### 16. Operadores lógicos
 
@@ -80,7 +80,7 @@ A CLI interpreta `$1`, `$#` e `"${@:2}"`. O servidor captura o PID do processo l
 
 ### 18. Expressões regulares
 
-`scripts/core/validator.sh` usa `grep -E '^ERROR[[:space:]]'` no manifesto do compilador. A expressão combina início de linha e classe POSIX para identificar diagnósticos. O AWK usa regex para reconhecer títulos, cercas e referências; a resolução de caminhos é complementada pela conferência canônica em Shell.
+`scripts/core/validator.sh` usa `grep -E '^ERROR[[:space:]]'` no manifesto do compilador. A expressão combina início de linha e classe POSIX para identificar diagnósticos. O AWK usa regex para reconhecer títulos, cercas e referências, a resolução de caminhos é complementada pela conferência canônica em Shell.
 
 ### 19. Programa em sed
 
@@ -104,4 +104,4 @@ A transformação retira o CR da terminação de linha. Não elimina espaços si
 cloc catalyst.sh scripts/core/*.{sh,awk,py} scripts/academic-report.sh
 ```
 
-A primeira operação atualiza a publicação com os fontes atuais; a segunda gera a evidência acadêmica. Não copie números de linha antigos para a planilha. Gere novamente depois de qualquer mudança nos fontes citados.
+A primeira operação atualiza a publicação com os fontes atuais, a segunda gera a evidência acadêmica. Não copie números de linha antigos para a planilha. Gere novamente depois de qualquer mudança nos fontes citados.

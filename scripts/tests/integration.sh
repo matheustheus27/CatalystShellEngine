@@ -10,6 +10,7 @@ trap cleanup EXIT
 cp "$ROOT/catalyst.sh" "$FIXTURE/"
 cp -R "$ROOT/scripts" "$ROOT/docs" "$ROOT/images" "$ROOT/templates" "$ROOT/vendor" "$FIXTURE/"
 cp "$ROOT/CEFET_REPORT.md" "$ROOT/README.md" "$FIXTURE/"
+[ ! -d "$ROOT/examples" ] || cp -R "$ROOT/examples" "$FIXTURE/"
 cli() { bash "$FIXTURE/catalyst.sh" "$@"; }
 assert() {
     local name="$1"
@@ -32,4 +33,6 @@ assert 'relatorio com fontes modulares' cli report
 assert 'regressoes de CLI e HTTP' bash "$ROOT/scripts/tests/regression.sh"
 assert 'transacoes, interrupcoes e concorrencia' bash "$ROOT/scripts/tests/transaction.sh"
 assert 'backends HTTP e clientes simultaneos' python3 "$ROOT/scripts/tests/http_backends.py"
+assert 'pastas configuraveis e auditoria Markdown' python3 "$ROOT/scripts/tests/configuration.py"
+assert 'demonstracao completa com rollback' bash "$ROOT/catalyst.sh" demo
 echo 'Integracao, regressoes e transacoes aprovadas.'

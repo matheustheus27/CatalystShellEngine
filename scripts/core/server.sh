@@ -6,7 +6,7 @@ SCRIPT="$(realpath "$0")"
 source "$(dirname "$SCRIPT")/transaction.sh"
 ACTION="${1:-}"
 SERVE_DIR="$(realpath -ms "${2:-.}")"
-PUBLISH_STATE="$(dirname "$SERVE_DIR")/.catalyst"
+PUBLISH_STATE=$(publication_state "$SERVE_DIR")
 mkdir -p "$PUBLISH_STATE"
 PORT="${3:-}"
 BACKEND="${4:-}"

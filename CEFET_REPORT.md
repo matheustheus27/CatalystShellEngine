@@ -10,7 +10,7 @@
 
 A documentação técnica fragmentada em capítulos de arquitetura, visão geral e manuais exige consolidação e manutenção de referências. A proposta apresentada à turma reúne cinco objetivos: ordenar capítulos de `docs/`, higienizar o texto, gerar um sumário hierárquico numerado automaticamente com AWK/sed, validar referências locais com regex e empacotar o release pronto para publicação.
 
-A [visão geral](docs/01-overview.md#proposta-apresentada) preserva a mensagem apresentada. Este guia descreve como produzir as evidências da implementação; não registra uma decisão de aprovação do professor nem uma submissão ao SIGAA.
+A [visão geral](docs/01-overview.md#proposta-apresentada) preserva a mensagem apresentada. Este guia descreve como produzir as evidências da implementação, não registra uma decisão de aprovação do professor nem uma submissão ao SIGAA.
 
 ## Correspondência com a implementação
 
@@ -20,7 +20,7 @@ A [visão geral](docs/01-overview.md#proposta-apresentada) preserva a mensagem a
 - **Validação:** regex em GNU AWK e `grep -E`, resolução de links por capítulo, verificação de fragmentos e caminhos canônicos dos ativos.
 - **Release:** HTML, Markdown, índices, métricas e ativos em `.tar.gz`, com permissões e checksum SHA-256.
 
-A CLI e os módulos de geração são Shell com AWK/sed e utilitários GNU/Linux. O HTML gerado usa JavaScript e bibliotecas locais para apresentação. O preview padrão é Bash/netcat; o backend Python concorrente é opcional. Python/ReportLab exporta o PDF, Python participa dos testes e Node/jsdom testa a interface. O comando `all` não depende desses runtimes.
+A CLI e os módulos de geração são Shell com AWK/sed e utilitários GNU/Linux. O HTML gerado usa JavaScript e bibliotecas locais para apresentação. O preview padrão é Bash/netcat, o backend Python concorrente é opcional. Python/ReportLab exporta o PDF, Python participa dos testes e Node/jsdom testa a interface. O comando `all` não depende desses runtimes.
 
 A entrada externa são os arquivos Markdown e os ativos, não dados digitados durante a execução. Os usos de `read` recebem arquivos, pipes ou HTTP. Os argumentos da CLI escolhem a operação.
 
@@ -28,7 +28,7 @@ A entrada externa são os arquivos Markdown e os ativos, não dados digitados du
 
 O enunciado consultado solicita um script útil, entrada e saída por arquivos, ausência de leitura de dados pelo teclado, pelo menos 30 linhas de código Shell verificadas com cloc e aplicação de no mínimo 15 conceitos distintos. A entrega contém descrição do problema, código numerado e uma planilha com seis colunas: número, conceito, aula, linha, trecho de código e descrição.
 
-O gerador documenta vinte conceitos e resolve arquivo e linha diretamente nos fontes atuais. Se uma evidência não for encontrada, a geração falha. A saída real do cloc discrimina linguagens; confira a contagem Shell para o requisito mínimo. A discussão dos conceitos fica no [capítulo acadêmico](docs/03-concepts.md).
+O gerador documenta vinte conceitos e resolve arquivo e linha diretamente nos fontes atuais. Se uma evidência não for encontrada, a geração falha. A saída real do cloc discrimina linguagens, confira a contagem Shell para o requisito mínimo. A discussão dos conceitos fica no [capítulo acadêmico](docs/03-concepts.md).
 
 ## Gerar o relatório em Markdown
 
@@ -65,6 +65,10 @@ CATALYST_PDF_PYTHON="$PWD/.venv-report/bin/python" ./catalyst.sh report --pdf
 O PDF fica em `dist/reports/sigaa-report.pdf`. O exportador exige DejaVu em `/usr/share/fonts/truetype/dejavu` e pode usar fontes locais de símbolos, inclusive Segoe UI Emoji no WSL. Sem cobertura de um caractere, o código Unicode é representado textualmente. Revise as páginas, a planilha e a numeração antes da entrega.
 
 `pack` é executado depois do PDF para incluí-lo no release. O botão PDF da interface usa a impressão do livro web e não substitui o relatório acadêmico numerado. Criar o arquivo local também não envia a entrega ao SIGAA.
+
+## Demonstração isolada e evidência de validação
+
+Execute `./catalyst.sh demo` para apresentar a publicação válida, os erros de referência e a preservação da saída. O roteiro usa uma cópia temporária de `examples/demo/`, sem alterar os capítulos de entrega. Para publicar outro conjunto, use `--docs` e `--output`, conforme o manual. A auditoria `<saida>.validation.md` mostra arquivo, linha, destino e motivo da última tentativa; o snapshot aprovado inclui `reports/validation.md`.
 
 ## Revisão final
 

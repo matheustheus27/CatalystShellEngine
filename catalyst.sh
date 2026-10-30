@@ -23,6 +23,7 @@ export CATALYST_ENV="production"
 # Variaveis criadas pelo usuario (Conceito 10)
 # Expansoes de substituicao de comandos $(...) e expansoes de parametros (Conceito 09)
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
+SOURCE_ROOT="$BASE_DIR"
 DOCS_DIR="${BASE_DIR}/docs"
 PUBLISHED_DIR="${BASE_DIR}/dist"
 DIST_DIR="$PUBLISHED_DIR"
@@ -54,6 +55,8 @@ source "$SCRIPTS_DIR/core/preview.sh"
 source "$SCRIPTS_DIR/core/transaction.sh"
 # shellcheck source=scripts/core/completion-command.sh
 source "$SCRIPTS_DIR/core/completion-command.sh"
+# shellcheck source=scripts/core/cli-options.sh
+source "$SCRIPTS_DIR/core/cli-options.sh"
 
 # Atributo de variavel: inteira (Conceito 12)
 declare -i TOTAL_DOCS=0
@@ -94,8 +97,14 @@ Comandos disponiveis:
   all         Executa o pipeline completo de publicacao (build, validate, pack)
   help        Exibe esta mensagem de ajuda detalhada
   completion  Instala ou remove o autocompletar da CLI no shell (~/.bashrc)
+  demo        Demonstra publicacao, erro de referencia e preservacao da saida
+Opcoes comuns (antes ou depois do comando):
+  --docs CAMINHO    Pasta de capitulos; raiz dos ativos e a pasta pai
+  --output CAMINHO  Pasta de publicacao (padrao: dist do motor)
 Exemplos:
   $0 all
+  $0 all --docs examples/demo/docs --output /tmp/catalyst-demo-site
+  $0 serve --output /tmp/catalyst-demo-site --port 8081
   $0 test
   $0 report
   $0 watch
@@ -254,15 +263,16 @@ generate_sigaa_report() {
 
 # Parametros especiais: $# (contagem de argumentos) (Conceito 11)
 # Expansao avancada com valor default ${1:-help} (Conceito 13)
-COMMAND="${1:-help}"
+parse_cli "$@"
 
 build_snapshot() {
     init_env
-    consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC" "$BASE_DIR"
+    VALIDATION_PENDING=1
+    consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC" "$SOURCE_ROOT"
     generate_toc "$OUTPUT_DOC" "$OUTPUT_TOC"
-    validate_assets_and_links "$OUTPUT_DOC" "$BASE_DIR" "$DOCS_DIR"
+    validate_assets_and_links "$OUTPUT_DOC" "$SOURCE_ROOT" "$DOCS_DIR"
     compute_statistics
-    generate_html_preview "$BASE_DIR" "$DIST_DIR"
+    generate_html_preview "$BASE_DIR" "$DIST_DIR" "$SOURCE_ROOT"
 }
 
 run_pipeline() {
@@ -276,8 +286,9 @@ run_pipeline() {
             ;;
         validate)
             init_env
-            consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC" "$BASE_DIR"
-            validate_assets_and_links "$OUTPUT_DOC" "$BASE_DIR" "$DOCS_DIR"
+            VALIDATION_PENDING=1
+            consolidate_documents "$DOCS_DIR" "$OUTPUT_DOC" "$SOURCE_ROOT"
+            validate_assets_and_links "$OUTPUT_DOC" "$SOURCE_ROOT" "$DOCS_DIR"
             ;;
         pack|report)
             init_env
@@ -302,7 +313,7 @@ watch_docs() {
     while true; do
         current_checksum=$(find "$DOCS_DIR" -type f -name '*.md' -print0 | sort -zV | xargs -0 -r sha256sum | sha256sum)
         if [ "$current_checksum" != "$last_checksum" ]; then
-            if bash "$BASE_DIR/catalyst.sh" build; then
+            if bash "$BASE_DIR/catalyst.sh" build --docs "$DOCS_DIR" --output "$PUBLISHED_DIR"; then
                 last_checksum="$current_checksum"
             else
                 echo 'Build falhou; a ultima publicacao foi preservada.' >&2
@@ -315,12 +326,16 @@ watch_docs() {
 case "$COMMAND" in
     build|all|validate|toc|sanitize|stats|pack|report|clean)
         show_banner
-        run_transaction "$COMMAND" "${@:2}"
+        if [ "$COMMAND" != report ] && [ "${#CLI_ARGS[@]}" -gt 0 ]; then
+            echo "Argumentos desconhecidos para $COMMAND: ${CLI_ARGS[*]}" >&2; exit 1
+        fi
+        run_transaction "$COMMAND" "${CLI_ARGS[@]}"
         ;;
-    serve) show_banner; manage_server "${@:2}" ;;
-    watch) watch_docs ;;
+    serve) show_banner; manage_server "${CLI_ARGS[@]}" ;;
+    watch) [ "${#CLI_ARGS[@]}" -eq 0 ] || exit 1; watch_docs ;;
+    demo) [ "${#CLI_ARGS[@]}" -eq 0 ] || exit 1; bash "$SCRIPTS_DIR/demo.sh" ;;
     test) bash "$SCRIPTS_DIR/tests/integration.sh" ;;
-    completion) manage_completion "$@" ;;
+    completion) manage_completion completion "${CLI_ARGS[@]}" ;;
     help|--help|-h) show_banner; show_help ;;
     *) echo "Opcao invalida: $COMMAND" >&2; show_help; exit 1 ;;
 esac

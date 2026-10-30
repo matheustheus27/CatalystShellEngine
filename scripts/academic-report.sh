@@ -53,7 +53,9 @@ sem manter manualmente a ordem, o sumario e as referencias locais.
 ### Entradas, saidas e fronteira tecnologica
 
 A entrada externa consiste nos capitulos .md de docs/ e subpastas e nos ativos
-locais referenciados. As saidas ficam em dist/. A CLI recebe argumentos; read
+locais referenciados. As saidas ficam em dist/ por padrao; --docs e --output
+selecionam outra entrada e publicacao. A pasta pai de --docs limita os ativos.
+A CLI recebe argumentos; read
 consome arquivos, pipes ou requisicoes HTTP, sem solicitar dados do teclado.
 
 O nucleo de geracao e Bash, GNU AWK, sed e utilitarios GNU/Linux. O comando all
@@ -61,6 +63,13 @@ nao depende de Python ou Node. A interface usa HTML, CSS e JavaScript com Marked
 DOMPurify e Mermaid locais. O preview padrao e Bash/netcat; o backend Python
 concorrente e opcional. Python participa dos testes e exporta o PDF com ReportLab;
 Node/jsdom e usado nos testes da interface. Esses apoios nao substituem o nucleo.
+
+A auditoria Markdown identifica arquivo, linha, destino e motivo dos erros, com
+resumo de referencias locais e URLs externas nao consultadas. O arquivo ao lado
+da saida, <saida>.validation.md, registra a ultima tentativa sem alterar uma
+publicacao valida. Cada build valido inclui reports/validation.md no snapshot.
+O comando demo demonstra o fluxo completo em copia temporaria, com titulos
+repetidos, subpastas, ativos e erros intencionais, conferindo a preservacao da saida.
 
 ### Publicacao, verificacao e limites
 
@@ -114,7 +123,7 @@ INTRO
     concept 10 'Parametros e Variaveis' catalyst.sh 'DIST_DIR="$PUBLISHED_DIR"' 'Variavel criada pelo usuario define a pasta de saida.'
     concept 11 'Parametros e Variaveis' scripts/core/server.sh 'local server_pid=$!' 'Parametro especial captura o PID do processo em background.'
     concept 12 'Parametros e Variaveis' catalyst.sh 'readonly APP_NAME=' 'readonly impede reatribuicao da constante.'
-    concept 13 'Parametros e Variaveis' catalyst.sh 'COMMAND="${1:-help}"' 'Expansao avancada define help como valor padrao.'
+    concept 13 'Parametros e Variaveis' scripts/core/cli-options.sh 'COMMAND="${COMMAND:-help}"' 'Expansao avancada define help quando nenhum comando foi informado.'
     concept 14 'Estruturas de fluxo condicionais' scripts/core/parser.sh 'if [ -f "$doc" ]; then' 'Teste -f seleciona arquivos regulares.'
     concept 15 'Estruturas de fluxo condicionais' catalyst.sh 'case "$COMMAND" in' 'case seleciona a operacao da CLI.'
     concept 16 'Estruturas de fluxo condicionais' scripts/core/parser.sh '[ $TOTAL_DOCS -gt 0 ] &&' 'Operador AND condiciona a exibicao do total.'

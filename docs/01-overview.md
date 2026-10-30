@@ -8,9 +8,9 @@ A mensagem apresentada à turma para apreciação do professor define o projeto:
 >
 > Pensei em fazer um programa que consolida, valida e gera documentação técnica unificada com base em múltiplos arquivos Markdown de um projeto. Capítulos de arquitetura, manuais de uso, visão geral, etc. Os arquivos base são múltiplos .md fragmentados dentro de uma pasta (docs/), e a ideia é processar tudo em Shell puro:
 >
-> - ordenar os capítulos;
-> - higienizar o texto;
-> - gerar um sumário hierárquico numerado automaticamente (1., 1.1., etc.) via AWK/sed;
+> - ordenar os capítulos.
+> - higienizar o texto.
+> - gerar um sumário hierárquico numerado automaticamente (1., 1.1., etc.) via AWK/sed.
 > - validar as referências locais com regex e empacotar o release final pronto para publicação.
 
 Essa descrição é a referência de escopo. Interface, servidor, testes e relatório apoiam a demonstração e a manutenção desse fluxo.
@@ -43,15 +43,15 @@ O compilador identifica links e imagens do subconjunto suportado de Markdown, re
 
 ### Empacotar a publicação
 
-O programa gera HTML, Markdown consolidado, sumário, índices, métricas e ativos, depois cria um `.tar.gz` com `tar` e gzip. Um SHA-256 permite conferir a integridade do pacote. O release é uma publicação estática que deve ser servida por HTTP; não exige o servidor de desenvolvimento original.
+O programa gera HTML, Markdown consolidado, sumário, índices, métricas e ativos, depois cria um `.tar.gz` com `tar` e gzip. Um SHA-256 permite conferir a integridade do pacote. O release é uma publicação estática que deve ser servida por HTTP, não exige o servidor de desenvolvimento original.
 
 ## Fronteira do núcleo em Shell
 
 O processamento proposto é implementado com Bash e programas AWK/sed, apoiados por utilitários GNU/Linux. O comando `all` funciona sem Python, Node ou downloads durante o build.
 
-A publicação contém JavaScript para renderizar Markdown e oferecer busca, temas e diagramas. O preview padrão é Bash com OpenBSD netcat; há um backend Python concorrente opcional. A exportação PDF usa Python/ReportLab. Os testes HTTP usam Python, e os testes da interface usam Node/jsdom. Essas dependências não substituem os cinco objetivos no núcleo Shell.
+A publicação contém JavaScript para renderizar Markdown e oferecer busca, temas e diagramas. O preview padrão é Bash com OpenBSD netcat, há um backend Python concorrente opcional. A exportação PDF usa Python/ReportLab. Os testes HTTP usam Python, e os testes da interface usam Node/jsdom. Essas dependências não substituem os cinco objetivos no núcleo Shell.
 
-O programa recebe parâmetros pela CLI e conteúdo por arquivos. `read` aparece em laços e no servidor, com entrada proveniente de arquivos, pipes ou HTTP; não há perguntas pelo teclado.
+O programa recebe parâmetros pela CLI e conteúdo por arquivos. `read` aparece em laços e no servidor, com entrada proveniente de arquivos, pipes ou HTTP, não há perguntas pelo teclado.
 
 ## Critérios de sucesso
 
@@ -64,3 +64,7 @@ O programa recebe parâmetros pela CLI e conteúdo por arquivos. `read` aparece 
 - A entrega acadêmica registra a contagem real de código e as evidências dos conceitos.
 
 Os [testes e medições](05-benchmarks.md) explicam a verificação. Os [limites](06-conclusion.md) delimitam o Markdown, o ambiente e as garantias atuais.
+
+## Reutilização e demonstração
+
+`--docs` e `--output` permitem aplicar o fluxo a outro projeto, mantendo os recursos de apresentação do motor. A auditoria Markdown detalha as referências e os motivos de erro da última tentativa. O exemplo `examples/demo/` e o comando `demo` demonstram títulos repetidos, subpastas, ativos e falhas sem modificar a documentação principal.

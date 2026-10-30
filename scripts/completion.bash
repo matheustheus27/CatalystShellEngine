@@ -31,7 +31,7 @@ _catalyst_completions() {
         prev="${COMP_WORDS[COMP_CWORD-1]:-}"
     fi
 
-    local commands="all build validate toc sanitize stats pack serve clean report test watch completion help"
+    local commands="all build validate toc sanitize stats pack serve clean report test watch demo completion help"
 
     # Encontra o indice onde catalyst(.sh) foi chamado
     local script_idx=-1
@@ -67,12 +67,16 @@ _catalyst_completions() {
 
     # 2. Parametros contextuais de cada subcomando
     case "$prev" in
+        --docs|--output)
+            _catalyst_reply -d -- "$cur"
+            return 0
+            ;;
         completion)
             _catalyst_reply -W "install uninstall source help" -- "$cur"
             return 0
             ;;
         serve)
-            _catalyst_reply -W "--stop stop --restart restart --backend --concurrent --port -p 8000 8080 3000" -- "$cur"
+            _catalyst_reply -W "--stop stop --restart restart --backend --concurrent --port -p --docs --output 8000 8080 3000" -- "$cur"
             return 0
             ;;
         --backend)
@@ -84,6 +88,9 @@ _catalyst_completions() {
             return 0
             ;;
     esac
+    if [[ "$cur" == -* ]]; then
+        _catalyst_reply -W "--docs --output --help" -- "$cur"
+    fi
 }
 
 # Suporte ao Zsh via modulo de compatibilidade bashcompinit

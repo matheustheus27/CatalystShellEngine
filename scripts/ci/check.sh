@@ -11,7 +11,8 @@ shellcheck --external-sources --severity=style "${scripts[@]}"
 gawk -v mode=index -v chapter_list=/dev/null -v file_list=/dev/null -f scripts/core/markdown.awk /dev/null
 gawk -v json=/dev/null -f scripts/core/toc.awk /dev/null >/dev/null
 node --check templates/app.js
-python3 -m py_compile scripts/core/server-threaded.py scripts/tests/http_backends.py
+python3 -m py_compile scripts/core/server-threaded.py scripts/tests/http_backends.py scripts/tests/configuration.py
+gawk -f scripts/core/validation-report.awk /dev/null >/dev/null
 bash catalyst.sh test
 bash catalyst.sh all
 bash catalyst.sh report

@@ -15,7 +15,7 @@ flowchart TD
     G --> H["7. tar.gz e checksums - comando all"]
     H --> I["Publicação sob lock"]
     I --> J["dist/ e preview HTTP"]
-    E -->|"erro"| K["Descarta staging; preserva a saída anterior"]
+    E -->|"erro"| K["Descarta staging, preserva a saída anterior"]
 ```
 
 As sete etapas descrevem o comando `all`. `build` termina após gerar a interface, sem refazer o pacote. O servidor e o relatório acadêmico são operações separadas.
@@ -28,7 +28,7 @@ As sete etapas descrevem o comando `all`. `build` termina após gerar a interfac
 
 ### 2. Catálogo, índice e consolidação
 
-`parser.sh` descobre capítulos com `find -print0 | sort -zV`, mantém a ordem em uma lista e rejeita uma entrada sem capítulos. Nomes com espaços são aceitos; tabulações e quebras de linha em nomes de capítulos são rejeitadas.
+`parser.sh` descobre capítulos com `find -print0 | sort -zV`, mantém a ordem em uma lista e rejeita uma entrada sem capítulos. Nomes com espaços são aceitos, tabulações e quebras de linha em nomes de capítulos são rejeitadas.
 
 `markdown.awk` faz uma passagem de índice antes da reescrita. Assim, um capítulo pode referenciar títulos de outro que aparece depois. O índice mantém títulos, IDs locais e globais e definições de links de referência. A reescrita converte links entre capítulos para âncoras da publicação e registra ativos e erros. `sanitizer.sh` aplica `sed -e 's/\r$//'` ao resultado, preservando o texto significativo.
 
@@ -42,7 +42,7 @@ As sete etapas descrevem o comando `all`. `build` termina após gerar a interfac
 
 ### 5. Métricas
 
-`compute_statistics` calcula capítulos, linhas e palavras, registra a data e extrai três linhas iniciais e finais com `head` e `tail`. A saída fica em `metrics/metrics.txt`. Essas contagens descrevem a publicação; a contagem acadêmica de código é obtida separadamente com `cloc`.
+`compute_statistics` calcula capítulos, linhas e palavras, registra a data e extrai três linhas iniciais e finais com `head` e `tail`. A saída fica em `metrics/metrics.txt`. Essas contagens descrevem a publicação, a contagem acadêmica de código é obtida separadamente com `cloc`.
 
 ### 6. Interface e ativos
 
@@ -54,15 +54,16 @@ O navegador busca documento, índices e métricas por HTTP. Marked renderiza Mar
 
 `packager.sh` inclui `docs`, `metrics`, `reports`, `index.html`, `ui` e, quando existe, `assets` no tarball. `releases/` não entra no próprio pacote. O módulo aplica permissão simbólica ao arquivo e gera `.sha256`, além de `.md5` por compatibilidade ou `.cksum` quando MD5 não está disponível.
 
-SHA-256 é uma verificação de integridade comparada a uma referência confiável; não é assinatura digital. O pacote ainda não normaliza datas e metadados para builds reproduzíveis byte a byte.
+SHA-256 é uma verificação de integridade comparada a uma referência confiável, não é assinatura digital. O pacote ainda não normaliza datas e metadados para builds reproduzíveis byte a byte.
 
 ## Responsabilidades dos componentes
 
-- `catalyst.sh`: caminhos, CLI, etapas, métricas e observação de alterações.
+- `catalyst.sh`: CLI, etapas, métricas e observação de alterações.
+- `scripts/core/cli-options.sh`: seleção de entrada/saída, resolução de caminhos e proteção dos destinos.
 - `scripts/core/parser.sh` e `markdown.awk`: catálogo, índice, consolidação e referências.
 - `scripts/core/toc.awk`: numeração e exportação do sumário.
 - `scripts/core/sanitizer.sh`: normalização CRLF por sed.
-- `scripts/core/validator.sh`: interpretação dos diagnósticos e conferência dos ativos.
+- `scripts/core/validator.sh` e `validation-report.awk`: conferência dos ativos e relatório Markdown da última tentativa.
 - `scripts/core/preview.sh`: preparação da interface e cópia dos ativos.
 - `scripts/core/packager.sh`: tarball, permissões e checksums.
 - `scripts/core/transaction.sh`: staging, bloqueios, publicação e recuperação.
@@ -73,6 +74,7 @@ SHA-256 é uma verificação de integridade comparada a uma referência confiáv
 - `scripts/export-report-pdf.py`: exportação opcional do relatório.
 - `templates/`: HTML, CSS, JavaScript e política CSP da interface.
 - `vendor/`: bundles, licenças, manifesto de versões e hashes.
+- `scripts/demo.sh` e `examples/demo/`: demonstração isolada de publicação válida e referências inválidas.
 - `scripts/tests/` e `scripts/ci/check.sh`: verificações e integração contínua.
 
 ## Contratos dos arquivos gerados
@@ -95,7 +97,7 @@ Os caminhos acima são relativos a `dist/`. Os metadados publicados usam caminho
 
 ### Escritores e leitores
 
-`build.lock` serializa os comandos que produzem saída. O staging é privado; leitores continuam acessando a publicação anterior enquanto o build ocorre. `publish.lock` coordena o commit e as respostas dos servidores. `validate` usa staging para conferir os fontes e descarta o resultado, sem alterar `dist/`.
+`build.lock` serializa os comandos que produzem saída. O staging é privado, leitores continuam acessando a publicação anterior enquanto o build ocorre. `publish.lock` coordena o commit e as respostas dos servidores. `validate` usa staging para conferir os fontes e descarta o resultado, sem alterar `dist/`.
 
 ### Filesystem Linux
 
@@ -103,7 +105,7 @@ O modo automático cria gerações em `.catalyst/generation.*` e substitui o lin
 
 ### Unidades Windows no WSL
 
-Em DrvFS/v9fs, o modo automático mantém `dist/` como diretório legível pelo Windows. O commit copia arquivos sob lock, guarda backup e registra um journal. Falhas tratadas restauram a publicação; após uma queda, o escritor ou preview usa o journal para recuperá-la.
+Em DrvFS/v9fs, o modo automático mantém `dist/` como diretório legível pelo Windows. O commit copia arquivos sob lock, guarda backup e registra um journal. Falhas tratadas restauram a publicação, após uma queda, o escritor ou preview usa o journal para recuperá-la.
 
 A CLI e os previews cooperam com esse bloqueio. Um leitor externo que ignore `publish.lock` pode observar arquivos de gerações diferentes durante a troca. Para atomicidade do snapshot inteiro, use filesystem Linux nativo.
 
@@ -119,6 +121,14 @@ O backend Bash usa OpenBSD netcat com listener persistente (`-k`) e processament
 
 ## Fronteira de segurança da interface
 
-O build valida os bundles locais. O navegador sanitiza o HTML antes da inserção, atribui os IDs do compilador e substitui imagens remotas por texto alternativo. A CSP restringe scripts, conexões e frames; estilos inline permanecem permitidos para SVGs do Mermaid, enquanto estilos arbitrários do documento são removidos.
+O build valida os bundles locais. O navegador sanitiza o HTML antes da inserção, atribui os IDs do compilador e substitui imagens remotas por texto alternativo. A CSP restringe scripts, conexões e frames, estilos inline permanecem permitidos para SVGs do Mermaid, enquanto estilos arbitrários do documento são removidos.
 
 Os previews aplicam uma CSP sandbox adicional a arquivos sob `/assets/`. Quem publicar em outro servidor deve configurar cabeçalhos equivalentes: a política do index não protege arquivos HTML/SVG abertos separadamente. Essas medidas não ampliam o parser para toda a especificação CommonMark nem transformam o preview em servidor de produção.
+
+## Contexto de entrada, saída e auditoria
+
+O diretório do motor continua sendo a origem dos módulos, templates, bibliotecas e evidências acadêmicas. A pasta pai de `--docs` define separadamente a raiz dos capítulos e ativos. `--output` define a publicação e seu estado transacional; o catálogo exclui essa saída, o estado oculto e a auditoria para não reprocessar artefatos gerados.
+
+Saídas com nomes diferentes têm locks, staging e gerações independentes, compartilhados com seus previews. O marcador `.catalyst-output` identifica diretórios gerados; ele não é incluído no tarball estático. A publicação padrão preserva compatibilidade com a estrutura anterior.
+
+O compilador registra ocorrências locais válidas, ativos, URLs externas não consultadas e erros em `links.tsv`. O validador completa a conferência canônica e produz a auditoria Markdown por troca atômica de arquivo. A última tentativa fica em `<saida>.validation.md`; só builds aprovados incluem uma cópia em `reports/validation.md`. Dessa forma, registrar um erro não modifica o snapshot válido anterior.
