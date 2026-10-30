@@ -30,27 +30,68 @@ Aluno: Matheus Thiago de Souza Ferreira
 
 ## 1. Problema e solucao
 
-A documentacao tecnica fragmentada em varios arquivos Markdown dificulta a leitura,
-a navegacao e a identificacao de referencias quebradas. O Catalyst Shell Engine
-automatiza a consolidacao dos capitulos, a normalizacao de texto, a geracao de
-sumario, a verificacao de arquivos referenciados, as metricas e o empacotamento.
+Projeto apresentado: Aplicacao Shell que cataloga, valida e gera documentacao web
+tecnica a partir de arquivos .md.
 
-A entrada externa consiste nos arquivos docs/*.md e nos ativos locais. As saidas
-sao documento consolidado, sumario, metricas, interface HTML e pacote tar.gz com
-checksums. A CLI recebe argumentos; os comandos read existentes consomem arquivos,
-pipes ou requisicoes HTTP, sem solicitar dados do teclado.
+A proposta apresentada a turma parte de capitulos fragmentados de arquitetura,
+visao geral e manuais em docs/. O problema e reuni-los em uma publicacao navegavel,
+sem manter manualmente a ordem, o sumario e as referencias locais.
 
-O nucleo e Bash com modulos de parser, sanitizacao, validacao, empacotamento e transacoes.
-Cada build usa staging privado e flock antes da publicacao. Em filesystem Linux,
-um link dist aponta atomicamente para a geracao concluida. Em DrvFS, a troca de
-arquivos e coordenada por lock e journal para manter compatibilidade Windows.
-A interface gerada contem HTML, CSS e
-JavaScript com Marked, DOMPurify e Mermaid locais, sem CDN. O preview padrao usa
-Bash e netcat; --backend threaded usa Python padrao com multiplas threads. Ambos
-escutam somente em 127.0.0.1 e respeitam o bloqueio de publicacao.
+### Objetivos da proposta e implementacao
 
-Este texto deve corresponder ao problema efetivamente enviado a lista da disciplina;
-a existencia deste relatorio nao comprova o envio da Etapa 01.
+- Catalogar e ordenar: find descobre arquivos Markdown recursivamente; sort -zV
+  organiza os caminhos em ordem natural, aceitando nomes com espacos.
+- Higienizar: um programa sed normaliza CRLF sem remover espacos significativos
+  ou modificar os arquivos de origem.
+- Gerar sumario numerado: GNU AWK indexa titulos H1-H6/Setext e produz numeracao
+  hierarquica e IDs unicos, compartilhados com a navegacao web.
+- Validar referencias locais: regex em AWK e grep -E identificam referencias e
+  diagnosticos; caminhos canonicos conferem ativos e fragmentos locais.
+- Empacotar: tar e gzip geram a publicacao estatica com HTML, Markdown, metadados,
+  metricas e ativos; SHA-256 permite conferir a integridade do pacote.
+
+### Entradas, saidas e fronteira tecnologica
+
+A entrada externa consiste nos capitulos .md de docs/ e subpastas e nos ativos
+locais referenciados. As saidas ficam em dist/. A CLI recebe argumentos; read
+consome arquivos, pipes ou requisicoes HTTP, sem solicitar dados do teclado.
+
+O nucleo de geracao e Bash, GNU AWK, sed e utilitarios GNU/Linux. O comando all
+nao depende de Python ou Node. A interface usa HTML, CSS e JavaScript com Marked,
+DOMPurify e Mermaid locais. O preview padrao e Bash/netcat; o backend Python
+concorrente e opcional. Python participa dos testes e exporta o PDF com ReportLab;
+Node/jsdom e usado nos testes da interface. Esses apoios nao substituem o nucleo.
+
+### Publicacao, verificacao e limites
+
+Cada build usa staging privado e flock. No Linux, a publicacao troca um link para
+a geracao concluida. Em DrvFS, arquivos sao trocados sob lock, backup e journal;
+leitores externos que ignoram o lock podem observar geracoes diferentes no commit.
+Falhas de processamento preservam a ultima publicacao valida. Os previews escutam
+somente em 127.0.0.1 e respeitam o bloqueio de publicacao.
+
+O parser cobre um subconjunto de Markdown, nao toda a especificacao CommonMark.
+URLs externas nao tem disponibilidade verificada. Os previews sao locais, e
+SHA-256 nao constitui assinatura digital. A documentacao completa registra os
+limites e os procedimentos de reproducao.
+
+### Reproducao no Linux ou Ubuntu WSL
+
+Com as dependencias do manual instaladas, execute no diretorio do projeto:
+
+```bash
+./catalyst.sh all
+./catalyst.sh test
+./catalyst.sh report
+./catalyst.sh serve
+```
+
+Abra http://127.0.0.1:8000. Apos preparar o venv com ReportLab e fontes DejaVu,
+use report --pdf e pack para gerar o PDF e inclui-lo no release. O guia de entrega
+CEFET_REPORT.md detalha instalacao, revisao visual e apresentacao.
+
+Este relatorio documenta a implementacao da proposta apresentada; sua geracao
+local nao registra aprovacao do professor nem submete o arquivo ao SIGAA.
 
 ## 2. Planilha de conceitos
 

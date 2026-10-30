@@ -366,7 +366,7 @@
                         • <code>/conceitos</code>: Lista os 20 conceitos do enunciado com linhas de código.<br>
                         • <code>/cli</code>: Lista todos os comandos operacionais da ferramenta.<br>
                         • <code>/stats</code>: Mostra as métricas atuais calculadas via <code>wc</code>.<br>
-                        • <code>/benchmark</code>: Exibe a comparação vs. Catalyst original.<br>
+                        • <code>/benchmark</code>: Explica os testes e o procedimento de medição.<br>
                         • <code>/limpar</code>: Limpa a conversa atual.<br><br>
                         <em>Você também pode fazer perguntas livres sobre qualquer tópico ou conceito!</em>`
                     };
@@ -425,7 +425,7 @@
                         • <strong>Capítulos Consolidados</strong>: ${docs}<br>
                         • <strong>Total de Linhas</strong>: ${lines}<br>
                         • <strong>Total de Palavras</strong>: ${words}<br>
-                        • <strong>Status da Integridade</strong>: 100% OK (Checksums validados)`,
+                        • <strong>Integridade do release</strong>: confira o arquivo <code>.sha256</code> do pacote.`,
                         anchor: '05anlisecomparativaebenchmarks',
                         anchorTitle: '05. Análise Comparativa e Benchmarks'
                     };
@@ -571,7 +571,7 @@
                     '📋 20 conceitos do trabalho',
                     '🚀 Como usar a CLI?',
                     '📊 Métricas de compilação',
-                    '⚡ Benchmarks vs. original'
+                    '⚡ Testes e medições'
                 ];
 
                 quickQuestions.forEach(q => {

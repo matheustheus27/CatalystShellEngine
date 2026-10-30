@@ -80,16 +80,16 @@ show_help() {
 Uso: $0 [COMANDO] [OPCOES]
 
 Comandos disponiveis:
-  build       Consolida documentos, gera sumario TOC, HTML e higieniza texto
+  build       Consolida, normaliza CRLF, gera sumario, valida e prepara HTML
   validate    Audita links internos e referencias a imagens locais com regex
   toc         Atualiza o snapshot e gera o sumario hierarquico com AWK
-  sanitize    Executa higienizacao de formatacao e espacos com sed
-  stats       Calcula estatisticas (linhas, palavras, checksums de integridade)
-  pack        Empacota versao final em arquivo compactado .tar.gz com permissoes
+  sanitize    Reconstroi o snapshot com normalizacao CRLF por sed
+  stats       Reconstroi o snapshot e calcula capitulos, linhas e palavras
+  pack        Empacota o snapshot existente em tar.gz com permissoes e SHA-256
   serve       Inicia servidor HTTP local em background (suporta --stop e porta)
   report      Gera relatorio com codigo numerado; --pdf exporta para PDF
   test        Executa suite de testes automatizados e assercoes do sistema
-  watch       Modo observador com recompilacao automatica a cada salvamento
+  watch       Observa checksums de Markdown a cada segundo e recompila
   clean       Limpa artefatos temporarios e gerados em dist/
   all         Executa o pipeline completo de publicacao (build, validate, pack)
   help        Exibe esta mensagem de ajuda detalhada

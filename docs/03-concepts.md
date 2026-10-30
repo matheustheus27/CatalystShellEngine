@@ -1,177 +1,107 @@
 # 03. Conformidade com o Enunciado (20 Conceitos)
 
-## Visão Geral da Matriz de Conceitos
+## Evidências e contagem
 
-O enunciado do **Trabalho Prático - TEFC: Shell Scripting** estabelece 20 conceitos fundamentais de desenvolvimento em ambiente Unix/Bash, exigindo a utilização comprovada de no mínimo 15 conceitos em um script com pelo menos 30 linhas de código.
+O enunciado solicita pelo menos 30 linhas de código Shell verificadas por `cloc` e ao menos 15 conceitos distintos. O projeto documenta vinte conceitos da CLI e dos módulos executados. Cada item abaixo apresenta uma aplicação real; não é uma lista de comandos que o programa deveria usar.
 
-O **Catalyst Shell Engine** demonstra os 20 conceitos do enunciado considerando a CLI e os módulos carregados por ela. A planilha gerada por `report` é a referência para arquivos e linhas atuais; a contagem de código vem da execução real do `cloc`.
+A referência oficial de arquivo e linha é `dist/reports/sigaa-report.md`, produzido por `./catalyst.sh report`. O gerador procura os trechos nos fontes atuais, falha se uma evidência desaparecer, executa `cloc` e inclui o código integral numerado por `nl -ba`. A planilha possui as seis colunas do enunciado. A saída do cloc discrimina Shell, AWK e Python; a categoria Shell deve ser examinada para o mínimo exigido.
 
-Abaixo, cada conceito é dissecado teoricamente com sua respectiva aplicação prática no código-fonte de [`catalyst.sh`](#04manualoperacionaldacli).
+Os usos de `read` documentados recebem arquivos, pipes e HTTP, sem entrada pelo teclado. A [entrega acadêmica](../CEFET_REPORT.md) explica a exportação e a revisão final.
 
----
+## Conceitos aplicados
 
-## Detalhamento Conceitual por Aula
+### 01. Comandos básicos
 
-### 01. Comandos Básicos (Aula: Comandos básicos)
-- **Conceitos**: `echo, ls, pwd, cd, tree, find, locate, whereis, file, stat, date, cal, history, clear, logout ou exit`
-- **Aplicação no Projeto**:
-  * `date`: Utilizado em cabeçalhos de execução e no relatório de métricas para carimbar o instante preciso da compilação: `date '+%d/%m/%Y %H:%M:%S'`.
-  * `echo`: Usado para saída informativa estruturada e formatação no terminal.
-  * `cd` e `pwd`: Empregados na resolução canônica e dinâmica do diretório-base do script: `BASE_DIR="$(cd "$(dirname "$0")" && pwd)"`.
-  * `exit`: Saída limpa do script com códigos de status padronizados (0 para sucesso, 1 para falha).
+Em `catalyst.sh`, `echo` e `date` mostram a data da execução. `cd` e `pwd` determinam o diretório-base do projeto a partir da localização do script, permitindo chamá-lo de outro diretório.
 
-### 02. Processamento de Texto (Aula: Processamento de texto)
-- **Conceitos**: `strings, cat, tac, wc, more, less, head, tail, tee, sort, zcat ou diff`
-- **Aplicação no Projeto**:
-  * `wc -l` e `wc -w`: Computam com precisão cirúrgica a contagem de linhas e palavras no documento mestre unificado (`TOTAL_LINES=$(wc -l < "$OUTPUT_DOC")`).
-  * `cat`: Utilizado para concatenar capítulos Markdown e exibir relatórios de integridade.
-  * `sort -V`: Ordenação de versão/numérica natural dos arquivos em `docs/*.md`, garantindo que `02-architecture.md` venha antes de `10-apendice.md`.
-  * `head -n 3` e `tail -n 3`: Amostragem dos blocos de abertura e conclusão do documento para o arquivo `metrics.txt`.
+### 02. Processamento de texto
 
-### 03. Sistema de Arquivos (Aula: Sistema de arquivos)
-- **Conceitos**: `mkdir, cd, rmdir, mv, cp, mv, ln, id, umask, basename, dirname, gzip, gunzip, tar, split, shred, cksum, md5sum, dd, lsof ou fuser`
-- **Aplicação no Projeto**:
-  * `mkdir -p`: Criação recursiva e idempotente da pasta `dist/`.
-  * `basename` e `dirname`: Extração de nomes de arquivos e caminhos de diretórios pais.
-  * `tar` e `gzip`: Empacotamento compactado do bundle final de distribuição: `tar -czf "$OUTPUT_BUNDLE" -C "$DIST_DIR" ...`.
-  * `md5sum` (com fallback em `cksum`): Checksum adicional de compatibilidade; SHA-256 é o checksum principal do release.
-  * O servidor verifica portas ocupadas sem encerrar processos de terceiros.
+`compute_statistics`, em `catalyst.sh`, usa `wc -l` e `wc -w` para contar linhas e palavras. `head -n 3` e `tail -n 3` geram amostras do documento. A ordenação de capítulos usa `sort -zV` no parser.
 
-### 04. Permissões de Arquivos (Aula: Sistema de arquivos)
-- **Conceitos**: `chmod` (representação octal ou simbólica)
-- **Aplicação no Projeto**:
-  * **Representação Octal**: `chmod 755 "$DIST_DIR"`, garantindo que o diretório de publicação tenha permissões explícitas de leitura, escrita e execução para o dono, e leitura/execução para os demais usuários.
-  * **Representação Simbólica**: `chmod u=rw,go=r "$OUTPUT_BUNDLE"`, assegurando que o tarball de release seja gravável apenas pelo autor e legível universalmente.
+### 03. Sistema de arquivos
 
-### 05. Controle de Processos (Aula: Processos)
-- **Conceitos**: `ps, top, jobs, bg, fg, pstree, vmstat, xload ou tload`
-- **Aplicação no Projeto**:
-  * `ps -p "$pid"`: Inspeciona a tabela de processos do kernel para checar se o servidor web HTTP local continua vivo antes de encerrá-lo ou emitir alertas.
-  * O código do gerenciamento de processos está em `scripts/core/server.sh`.
+`scripts/core/packager.sh` executa `tar -czf "$output_archive"` para reunir os artefatos e comprimi-los com gzip. Outros módulos usam `mkdir`, `cp`, `mv`, `ln` e `rm` na preparação, publicação e limpeza de recursos temporários.
 
-### 06. Sinais do Sistema Operacional (Aula: Processos)
-- **Conceitos**: `kill ou killall`
-- **Aplicação no Projeto**:
-  * `kill -15 -- "-$pid"`: Envio do sinal padrão `SIGTERM` para encerramento gracioso do servidor web.
-  * `kill -9 -- "-$pid"`: Fallback imediato com `SIGKILL` caso o processo não responda ao término gracioso dentro do timeout.
+### 04. Permissões de arquivos
 
-### 07. Redirecionamentos de Entrada e Saída (Aula: Entradas, saídas e Redirecionamentos)
-- **Conceitos**: Redirecionamento da entrada (`<`), saída (`>`), saída de adição (`>>`) e saída de erro padrão (`2>`, `>&2`)
-- **Aplicação no Projeto**:
-  * `> "$METRICS_FILE"`: Gravação do relatório calculado; a inicialização preserva métricas existentes.
-  * `echo "..." >&2`: Emissão de mensagens de diagnóstico na saída de erro padrão (*stderr*).
-  * `2>/dev/null`: Supressão de mensagens de erro irrelevantes durante varreduras silenciosas.
-  * `wc -l < "$OUTPUT_DOC"`: Alimentação direta da entrada padrão (*stdin*) do `wc` para evitar a impressão do nome do arquivo.
+`chmod 755 "$DIST_DIR"`, em `catalyst.sh`, demonstra a representação octal. `chmod u=rw,go=r "$output_archive"`, no packager, demonstra a forma simbólica. O estado do servidor recebe `umask 077` e diretório privado. Em montagens Windows, a aplicação efetiva das permissões depende da configuração do filesystem.
 
-### 08. Pipes e Redirecionamentos Avançados (Aula: Entradas, saídas e Redirecionamentos)
-- **Conceitos**: Pipes (`|`), redirecionamentos compostos e *Process Substitution* (`<(...)`)
-- **Aplicação no Projeto**:
-  * Pipe linear com ordenação: `find "$docs_dir" -maxdepth 1 -type f -name "*.md" -print0 | sort -zV`.
-  * Redirecionamento avançado em bloco: `{ echo "..."; echo "..."; } > "$METRICS_FILE"`.
-  * *Process Substitution*: `while IFS= read -r match; do ... done < <(grep -E -o "$link_pattern" "$OUTPUT_DOC")`, alimentando o laço `while` sem criar subshell isolada para as variáveis acumuladoras.
+### 05. Controle de processos
 
-### 09. Expansões do Shell (Aula: Expansões)
-- **Conceitos**: Expansão de arquivos, til (`~`), aritmética (`$((...))`), chaves (`{...}`), parâmetros e substituição de comandos (`$(...)`)
-- **Aplicação no Projeto**:
-  * Expansão aritmética: `TOTAL_DOCS=$((TOTAL_DOCS + 1))` e `broken_links=$((broken_links + 1))`.
-  * Substituição de comando: `BASE_DIR="$(cd "$(dirname "$0")" && pwd)"`.
-  * Expansão de caminhos e globbing: `"$DOCS_DIR"/*.md`.
+`scripts/core/server.sh` usa `ps -p "$pid"` para verificar se o processo registrado existe. A identidade também é conferida em `/proc/$pid/cmdline`, antes de considerar o PID como pertencente ao projeto.
 
-### 10. Variáveis de Usuário e Reservadas (Aula: Parâmetros e Variáveis)
-- **Conceitos**: Declaração, manipulação e escopo de variáveis
-- **Aplicação no Projeto**:
-  * Definição de caminhos absolutos canônicos: `DIST_DIR="${BASE_DIR}/dist"`, `OUTPUT_DOC="${DIST_DIR}/full-document.md"`.
-  * Uso de variáveis de ambiente do sistema (`PATH`, `USER`).
+### 06. Sinais
 
-### 11. Parâmetros Posicionais e Especiais (Aula: Parâmetros e Variáveis)
-- **Conceitos**: `$0 até $n, $*, $@, $#, $?, $$ ou $!`
-- **Aplicação no Projeto**:
-  * `$0`: Identificador do nome do script invocado para mensagens de ajuda e uso.
-  * `$1`, `$2`: Captura dos subcomandos principais na CLI (`build`, `validate`, `serve`).
-  * `$#`: Verificação da contagem total de argumentos passados.
-  * `$@`: Repasse transparente de listas completas de flags e opções para funções internas (`manage_server "$@"`).
-  * `$!`: Captura do Process ID (PID) exato do processo lançado em segundo plano (`setsid bash "$SCRIPT" worker ... &`).
-  * `$?`: Captura e propagação do código de retorno da última operação (`exit $?`).
+No servidor, `kill -15 -- "-$pid"` solicita o término do grupo de processos do preview. Depois da espera limitada, `kill -9` é o recurso de encerramento forçado. `trap` trata sinais e limpeza nos módulos de servidor e transação.
 
-### 12. Atributos de Variáveis (Aula: Parâmetros e Variáveis)
-- **Conceitos**: `readonly`, `export`, inteira (`declare -i`), arranjo (`declare -a`) e funções
-- **Aplicação no Projeto**:
-  * `readonly APP_NAME="Catalyst Shell Engine"`: Imutabilidade de constantes essenciais.
-  * `export CATALYST_ENV="production"`: Exportação global para processos filhos.
-  * `declare -i TOTAL_DOCS=0`: Declaração explícita de variáveis inteiras tipadas.
-  * `local -a artifacts=(docs metrics reports index.html)`: Array com os artefatos do pacote, no módulo de empacotamento.
-  * Declaração de funções modulares estruturadas (`init_env()`, `consolidate_documents()`, etc.).
+### 07. Redirecionamentos
 
-### 13. Expansões Avançadas de Parâmetros (Aula: Parâmetros e Variáveis)
-- **Conceitos**: `${param:-default}, ${param:=val}, ${param%%pattern}, ${param#pattern}, ${param//pattern/string}`
-- **Aplicação no Projeto**:
-  * Valor padrão (*fallback*): `COMMAND="${1:-help}"` e `port="${1:-8000}"`.
-  * Remoção do maior sufixo coincidente: `clean_target="${raw_url%%#*}"` para descartar âncoras internas de links Markdown.
-  * Expansão com verificação de não-nulo: `rm -rf "${DIST_DIR:?}"/*` para proteção contra deleções acidentais de diretórios raiz.
+O bloco de métricas em `catalyst.sh` termina com `> "$METRICS_FILE"`. `wc -l < "$OUTPUT_DOC"` lê diretamente o arquivo. Diagnósticos usam `>&2`, e operações silenciosas podem redirecionar erros para `/dev/null`.
 
-### 14. Testes Condicionais com Test e If (Aula: Estruturas de fluxo condicionais)
-- **Conceitos**: Operadores `-f`, `-d`, `-z`, `-n`, `=~` (regex nativo)
-- **Aplicação no Projeto**:
-  * Verificação de arquivo regular: `if [ -f "$doc" ]; then`.
-  * Verificação de diretório: `if [ -d "$target_path" ]; then`.
-  * Comparação com Regex nativo do Bash: `if [[ ! "$raw_url" =~ ^https?:// && ! "$raw_url" =~ ^# ]]; then`.
+### 08. Pipes e substituição de processo
 
-### 15. Estruturas de Seleção Case (Aula: Estruturas de fluxo condicionais)
-- **Conceitos**: `case ... in ... esac` com correspondência de padrões
-- **Aplicação no Projeto**:
-  * Roteador central da CLI de subcomandos:
-    ```bash
-    case "$COMMAND" in
-        build)    ... ;;
-        validate) ... ;;
-        serve)    ... ;;
-        clean)    ... ;;
-        *)        ... ;;
-    esac
-    ```
+`scripts/core/parser.sh` alimenta o laço de capítulos com `done < <(find ... -print0 | sort -zV)`. O pipe conecta descoberta e ordenação; a substituição de processo entrega o fluxo ao laço sem perder o contador em uma subshell do pipe.
 
-### 16. Desvios Condicionais com Operadores Lógicos (Aula: Estruturas de fluxo condicionais)
-- **Conceitos**: Operadores `&&` (AND lógico) e `||` (OR lógico)
-- **Aplicação no Projeto**:
-  * Proteção contra falhas em etapas críticas: `mkdir -p "$DIST_DIR" || { echo "Falha..." >&2; exit 1; }`.
-  * Execução condicional concisa: `[ $TOTAL_DOCS -gt 0 ] && echo "Total de capitulos: $TOTAL_DOCS"`.
+### 09. Expansões do Shell
 
-### 17. Comandos de Repetição e Sequenciadores (Aula: Estruturas de fluxo de repetição)
-- **Conceitos**: `for, while, until, select, break, continue`
-- **Aplicação no Projeto**:
-  * Laço `while`: Iteração sobre caminhos de capítulos delimitados por NUL e ordenados, incluindo nomes com espaços.
-  * Laço `while`: Processamento linha por linha dos resultados do validador de links.
-  * `continue`: Salto de iterações em linhas vazias detectadas durante a auditoria.
+`TOTAL_DOCS=$((TOTAL_DOCS + 1))` demonstra expansão aritmética no parser. `$(...)` captura saídas de comandos, como os caminhos resolvidos e as contagens. Os arquivos enviados ao cloc usam expansão de caminhos e de chaves.
 
-### 18. Expressões Regulares Básicas e Estendidas (Aula: Expressões Regulares)
-- **Aplicação no Projeto**: `grep -E '^ERROR[[:space:]]'` identifica registros de
-  erro produzidos pelo compilador. A expressão usa o metacaractere de início de
-  linha e uma classe POSIX. A resolução estrutural dos links fica no GNU AWK.
+### 10. Variáveis
 
-### 19. Programa em Sed (Aula: sed)
-- **Aplicação no Projeto**:
+Em `catalyst.sh`, `PUBLISHED_DIR`, `DIST_DIR` e `OUTPUT_DOC` separam a publicação visível da área de trabalho. `configure_output_paths` recalcula os caminhos quando a transação seleciona staging.
+
+### 11. Parâmetros posicionais e especiais
+
+A CLI interpreta `$1`, `$#` e `"${@:2}"`. O servidor captura o PID do processo lançado em background com `local server_pid=$!`. Códigos de retorno, como `$?`, são usados no tratamento de falhas e na limpeza transacional.
+
+### 12. Atributos de variáveis e funções
+
+`readonly APP_NAME` protege uma constante; `export CATALYST_ENV` disponibiliza uma variável aos filhos; `declare -i TOTAL_DOCS=0` declara um inteiro. Arrays armazenam capítulos e artefatos. Funções como `build_snapshot` e `package_release` delimitam responsabilidades.
+
+### 13. Expansões avançadas de parâmetros
+
+`COMMAND="${1:-help}"` fornece a operação padrão. No servidor, `${target%%\?*}` remove a query da URL e `${target#/}` retira a barra inicial. No parser, `${doc#"$base_dir/"}` obtém o caminho relativo.
+
+### 14. Testes condicionais
+
+`if [ -f "$doc" ]; then`, no parser, verifica arquivos regulares. O servidor usa testes de diretório, leitura e existência, além de `[[ ... =~ ... ]]` para validar porta e codificação hexadecimal.
+
+### 15. Seleção com case
+
+`case "$COMMAND" in`, em `catalyst.sh`, seleciona a operação. Outro `case` trata opções de `serve`; no servidor, padrões de extensão definem o tipo de conteúdo HTTP.
+
+### 16. Operadores lógicos
+
+`[ $TOTAL_DOCS -gt 0 ] && ...`, no parser, condiciona a mensagem de contagem. `mkdir ... || { ...; exit 1; }`, na preparação, interrompe a execução quando não consegue criar a saída.
+
+### 17. Repetição
+
+`while IFS= read -r -d '' doc; do`, no parser, percorre nomes delimitados por NUL. `for` percorre artefatos e gerações, e `while` processa argumentos e monitora alterações. Os laços leem fontes explícitos, sem solicitar dados do teclado.
+
+### 18. Expressões regulares
+
+`scripts/core/validator.sh` usa `grep -E '^ERROR[[:space:]]'` no manifesto do compilador. A expressão combina início de linha e classe POSIX para identificar diagnósticos. O AWK usa regex para reconhecer títulos, cercas e referências; a resolução de caminhos é complementada pela conferência canônica em Shell.
+
+### 19. Programa em sed
+
+`scripts/core/sanitizer.sh` aplica o programa:
 
 ```bash
 sed -e 's/\r$//' "$input_file" > "$output_file"
 ```
 
-O programa normaliza CRLF preservando espaços significativos, indentação e cercas.
-Não remove hard breaks nem altera exemplos de código.
+A transformação retira o CR da terminação de linha. Não elimina espaços significativos nem altera a indentação de exemplos. A escrita em outro arquivo preserva os fontes.
 
-### 20. Programa em AWK (Aula: AWK)
-- **Aplicação no Projeto**: `scripts/core/markdown.awk` indexa os fontes, diferencia
-  texto de código, calcula IDs únicos e resolve referências no escopo do capítulo.
-  `scripts/core/toc.awk` utiliza esse índice para gerar o sumário e o JSON consumido
-  pela interface. Arrays associativos mantêm os IDs ocupados e os destinos locais.
+### 20. Programa em AWK
 
-```awk
-function allocate(base, scope,    id,n) {
-    id=base; n=0
-    while ((scope SUBSEP id) in occupied) id=base "-" ++n
-    occupied[scope SUBSEP id]=1
-    return id
-}
+`scripts/core/markdown.awk` indexa títulos, diferencia texto de código, atribui IDs únicos e resolve referências por capítulo. Arrays associativos controlam IDs ocupados e destinos. `scripts/core/toc.awk` mantém contadores hierárquicos e gera sumário e JSON a partir do índice compartilhado.
+
+## Evidência reproduzível
+
+```bash
+./catalyst.sh all
+./catalyst.sh report
+cloc catalyst.sh scripts/core/*.{sh,awk,py} scripts/academic-report.sh
 ```
 
-A mesma numeração é usada na publicação e na navegação; o navegador não recalcula
-slugs com um algoritmo diferente. A planilha do relatório indica as linhas atuais.
+A primeira operação atualiza a publicação com os fontes atuais; a segunda gera a evidência acadêmica. Não copie números de linha antigos para a planilha. Gere novamente depois de qualquer mudança nos fontes citados.

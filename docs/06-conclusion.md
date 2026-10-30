@@ -1,52 +1,40 @@
 # 06. Conclusão e Resultados
 
-## Resultado da implementação
+## Resultado em relação à proposta
 
-O projeto consome capítulos Markdown e gera documentação consolidada, sumário,
-métricas, interface HTML e distribuição compactada. Os 20 conceitos são
-identificados na CLI e nos módulos efetivamente executados. O relatório acadêmico
-resolve as linhas diretamente nos fontes e registra a execução real do `cloc`.
+A aplicação implementa o fluxo apresentado ao professor: cataloga e ordena capítulos Markdown, normaliza o texto com sed, gera sumário hierárquico numerado com AWK, valida referências locais com regex e empacota uma publicação web estática. Os arquivos de autoria permanecem separados, e os artefatos gerados ficam em `dist/`.
 
-O pipeline retorna falha para referências inválidas, preserva métricas entre
-comandos e aceita nomes de capítulos com espaços. O preview valida portas, mantém
-estado por usuário/projeto e encerra seu grupo de processos. Os testes utilizam
-um diretório temporário Linux e incluem requisições HTTP e entradas inválidas.
-O PDF acadêmico é exportado por uma ferramenta Python opcional, separada do núcleo.
+O núcleo usa Bash e ferramentas GNU/Linux. Os recursos adicionais de interface, preview concorrente e exportação PDF têm suas dependências declaradas. O projeto aplica vinte conceitos de Shell com evidências extraídas dos fontes atuais, sem fixar números de linha ou contagens históricas no manual.
+
+## Robustez implementada
+
+A publicação usa staging privado e bloqueios, com preservação da saída anterior quando o processamento falha. Há publicação por troca de link no Linux e modo compatível com Windows, com journal e recuperação para leitores cooperantes.
+
+O compilador indexa antes de reescrever referências, mantém IDs únicos e compartilha o índice com a interface. Os bundles são locais e verificados, o HTML é sanitizado, e os previews aplicam CSP e contenção de caminhos.
+
+Os testes cobrem falhas, concorrência de escritores, interrupções, recuperação e os dois servidores. O listener Bash permanece aberto entre respostas para atender os pedidos de recursos do navegador sem a perda causada pela recriação da escuta. A verificação completa acrescenta análise estática e testes da interface offline.
 
 ## Limites atuais
 
-- O preview Bash é sequencial; o backend Python concorrente é opcional. Ambos são locais.
-- O parser cobre um subconjunto de Markdown; não implementa toda a especificação.
-- IDs são únicos e normalizados para ASCII. Containers Markdown profundamente
-  aninhados e toda a extensão de CommonMark ainda não são cobertos pelo compilador.
-- A interface é offline e sanitizada. Novas versões das bibliotecas precisam ser
-  incorporadas explicitamente, com revisão dos checksums e das licenças.
-- No DrvFS do WSL, leitores externos que ignoram `publish.lock` podem observar
-  arquivos de gerações diferentes durante o commit; use filesystem Linux para
-  a troca atômica do snapshot inteiro.
-- O checksum detecta alterações; autenticidade depende de uma referência confiável.
+- O parser implementa um subconjunto de Markdown, não toda a especificação CommonMark. Containers profundamente aninhados e codificações URI além das documentadas podem exigir adaptação do conteúdo.
+- IDs são normalizados para ASCII. Não se deve presumir equivalência com todos os algoritmos de âncoras de outros renderizadores.
+- A validação confere referências locais; não verifica disponibilidade de URLs externas.
+- A publicação Linux usa troca de link. Em DrvFS, leitores externos que ignorem o lock podem observar arquivos de gerações diferentes durante o commit.
+- O preview Bash é sequencial; o backend Python permite concorrência limitada. Ambos são locais, sem TLS ou autenticação, e não se destinam à produção.
+- `watch` consulta checksums de Markdown a cada segundo. Não observa templates ou ativos e não recarrega automaticamente o navegador.
+- `pack` e `report` podem aproveitar uma publicação existente; atualizar os fontes exige um novo build antes da entrega.
+- SHA-256 verifica integridade contra uma referência confiável; não substitui assinatura digital. O tarball ainda não é reproduzível byte a byte.
+- A consulta web funciona offline com os bundles presentes. Instalação de dependências e atualização de bibliotecas podem exigir internet.
+- Os testes da interface usam DOM simulado; a apresentação e o PDF também precisam de revisão visual.
 
-## Melhorias implementadas nesta revisão
+## Continuidade recomendada
 
-- CLI modular, com uma implementação por responsabilidade e template HTML separado.
-- Build transacional com staging privado, bloqueio por projeto e publicação atômica
-  por link no Linux; modo DrvFS com journal, rollback e leitura coordenada.
-- CI configurado no GitHub Actions com sintaxe, ShellCheck, integração, regressões
-  e artefatos, no Ubuntu 22.04 e 24.04. O equivalente local foi validado no WSL.
-- Testes para dois escritores, interrupções, falha durante o commit, recuperação
-  de journal e preview acompanhando novas gerações.
+As próximas melhorias podem manter o mesmo escopo de processamento documental:
 
-- Parser com IDs únicos, títulos H1–H6/Setext, cercas por comprimento, referências
-  locais por capítulo e validação de fragmentos.
-- Bundles locais de Marked, DOMPurify e Mermaid, com integridade verificada e CSP.
-- Backend concorrente opcional, com limite de conexões, timeout e publicação coordenada.
+1. Validação externa opcional por HTTP, com timeout, cache, limite de concorrência e distinção entre falha de rede e URL inexistente.
+2. Releases reproduzíveis, normalizando metadados do tar e registrando um manifesto dos fontes; assinatura digital como recurso separado.
+3. Observação por inotify com fallback por checksum, debounce e cobertura de templates, ativos e scripts.
+4. Ampliação de casos de falha, como disco cheio, dependências ausentes, arquivos grandes e mais estruturas Markdown.
+5. Testes automatizados em navegador real para complementar jsdom e verificar layout, CSP e impressão.
 
-## Implementações recomendadas para maior robustez
-
-1. **Validação externa opcional**: verificar URLs por curl com timeout, limite de
-   concorrência, cache e tratamento explícito de redirecionamentos e erros de rede.
-2. **Releases reproduzíveis**: normalizar timestamps e metadados do tar, produzir
-   manifesto de fontes e separar checksums de assinaturas digitais verificáveis.
-3. **Observação mais precisa**: usar inotify quando disponível, debounce e monitorar
-   também ativos, templates e alterações nos scripts, com fallback por checksum.
-4. **Testes de isolamento e falhas**: ampliar a cobertura para falta de dependências, disco cheio e documentos muito grandes.
+Esses itens são perspectivas de evolução, não funcionalidades declaradas como prontas. O fluxo atual e seus critérios de sucesso estão na [visão geral](01-overview.md); as instruções de operação estão no [manual](04-usage-guide.md).

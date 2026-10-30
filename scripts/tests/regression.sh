@@ -74,5 +74,5 @@ cli serve --stop >/dev/null
 if nc -z -w 1 127.0.0.1 "$PORT"; then echo 'Porta ficou aberta apos stop' >&2; exit 1; fi
 cli report >/dev/null
 test "$(grep -c '^| [0-9]' "$FIXTURE/dist/reports/sigaa-report.md")" -eq 20
-test "$(grep -c '^```bash' "$FIXTURE/dist/reports/sigaa-report.md")" -eq "$(find "$FIXTURE/scripts/core" -maxdepth 1 -name '*.sh' | wc -l | awk '{print $1+2}')"
+test "$(awk '/^## 4[.] Codigo/ {sources=1; next} /^## 5[.]/ {sources=0} sources && /^```bash/ {count++} END {print count+0}' "$FIXTURE/dist/reports/sigaa-report.md")" -eq "$(find "$FIXTURE/scripts/core" -maxdepth 1 -name '*.sh' | wc -l | awk '{print $1+2}')"
 echo 'Regressoes: arquivos com espacos, vazio, links, metricas, SHA-256, HTTP, isolamento e relatorio aprovados.'

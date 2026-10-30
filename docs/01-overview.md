@@ -1,48 +1,66 @@
 # 01. Visão Geral e Motivação
 
-## Contexto e Inspiração no GlassHub Catalyst
+## Proposta apresentada
 
-No desenvolvimento moderno de software, a documentação técnica é um ativo crítico para engenheiros, arquitetos, gestores e novos integrantes de equipe. O [**GlassHub Catalyst**](https://github.com/matheustheus27/GlassHubCatalyst), foi desenvolvido como uma plataforma empresarial projetada para orquestrar compilação tripartite (Python, PHP, Node.js), busca vetorial com RAG (Ollama / LLaMA 3.2), tradução assíncrona orientada a filas RabbitMQ e telemetria Datadog.
+A mensagem apresentada à turma para apreciação do professor define o projeto:
 
-Contudo, em pipelines de Integração Contínua (CI/CD), containers enxutos (Scratch/Alpine), instâncias de borda (Edge Computing) ou terminais de administração de servidores, a dependência de runtimes pesados (Python, PHP, Node.js, Docker, etc.) introduz sobrecarga operacional excessiva, lentidão de inicialização e potenciais vulnerabilidades na cadeia de suprimentos.
+> **Projeto: Aplicação Shell que cataloga, valida e gera documentação web técnica a partir de arquivos .md**
+>
+> Pensei em fazer um programa que consolida, valida e gera documentação técnica unificada com base em múltiplos arquivos Markdown de um projeto. Capítulos de arquitetura, manuais de uso, visão geral, etc. Os arquivos base são múltiplos .md fragmentados dentro de uma pasta (docs/), e a ideia é processar tudo em Shell puro:
+>
+> - ordenar os capítulos;
+> - higienizar o texto;
+> - gerar um sumário hierárquico numerado automaticamente (1., 1.1., etc.) via AWK/sed;
+> - validar as referências locais com regex e empacotar o release final pronto para publicação.
 
-O **Catalyst Shell Engine** nasce como uma reimaginação arquitetural completa do Catalyst: **100% concebido, implementado e executado em Shell Script nativo (Bash)** para a disciplina **TEFC: Shell Scripting** do **CEFET-MG**.
+Essa descrição é a referência de escopo. Interface, servidor, testes e relatório apoiam a demonstração e a manutenção desse fluxo.
 
----
+## Problema resolvido
 
-## O Problema do Mundo Real
+A documentação de um projeto costuma ser dividida em visão geral, arquitetura, instalação e manuais. Essa separação facilita a autoria, mas cria trabalho adicional para quem precisa de uma versão única para consulta ou entrega.
 
-Em repositórios técnicos de grande porte, a documentação é rotineiramente fragmentada em dezenas de arquivos Markdown distribuídos em subpastas:
+Ao reunir os arquivos manualmente, é possível inverter capítulos, manter um sumário desatualizado, quebrar links relativos, repetir identificadores de títulos ou esquecer imagens. O problema não é produzir o conteúdo técnico: é consolidar, verificar e distribuir esse conteúdo de forma repetível.
 
-1. **Fragmentação de Leitura**: O leitor é forçado a alternar entre arquivos isolados, perdendo a perspectiva linear do sistema como um todo.
-2. **Sumários Desatualizados**: Manter links e índices manuais em documentos grandes é uma tarefa propensa a erros, com seções renomeadas e âncoras órfãs.
-3. **Inconsistências Léxicas e Sintáticas**: Espaços em branco residuais no final de linhas, formatação irregular de títulos (`##Título` vs `## Título`) e quebras de linha defeituosas poluem o histórico de commits do Git.
-4. **Links e Ativos Quebrados**: Referências relativas a imagens ou outros capítulos frequentemente quebram após refatorações de diretórios.
-5. **Auditoria e Governança**: Falta de métricas objetivas (linhas, palavras, checksums criptográficos de integridade) que permitam detectar alterações no artefato publicado.
+O Catalyst Shell Engine mantém os arquivos de autoria separados e gera uma publicação navegável. A execução pode ser repetida depois de uma alteração e retorna erro quando encontra referências locais inválidas.
 
-O **Catalyst Shell Engine** resolve todos esses desafios por meio de um único script orquestrador executável (`catalyst.sh`), utilizando apenas o arsenal canônico de utilitários padrão do ambiente GNU/Linux com Bash.
+## Relação entre proposta e implementação
 
----
+### Catalogar e ordenar capítulos
 
-## Matriz de Capacidades do Sistema
+O programa percorre `docs/` e suas subpastas, seleciona arquivos `.md` e ordena os caminhos com `sort -zV`. A delimitação por NUL permite nomes com espaços. A ordem é a dos caminhos completos relativos: prefixos numéricos e subpastas devem refletir a leitura desejada.
 
-A tabela abaixo resume as capacidades centrais do Catalyst Shell Engine, comparando a abordagem tradicional pesada com a solução nativa em Shell:
+### Higienizar o texto
 
-| Capacidade | Solução Tradicional (Multi-Runtime) | Solução Catalyst Shell Engine | Ferramentas Unix Empregadas |
-|---|---|---|---|
-| **Ingestão Documental** | Scripts Python com `pathlib` e bibliotecas terceiras | Varredura e ordenação natural com globbing | `find -print0`, `sort -zV`, `cat` |
-| **Sumário Hierárquico (TOC)** | Bibliotecas AST Markdown complexas | Parser semântico de cabeçalhos de 3 níveis | `awk`, `substr`, `tolower`, `gsub` |
-| **Sanitização Léxica** | Linters de terceiros (Prettier, Markdownlint) | Filtros de substituição por expressões regulares | `sed -E`, `s///` |
-| **Auditoria de Integridade** | Scripts Node.js com crawlers de links | Varredura léxica com metacaracteres estendidos | `grep -E -o`, `[[ =~ ]]` |
-| **Métricas e Telemetria** | Daemons de observabilidade pesados | Contagem e amostragem nativa de I/O | `wc -l`, `wc -w`, `head`, `tail` |
-| **Empacotamento de Release** | Ferramentas proprietárias de build | Empacotamento tarball gzip com hashes | `tar`, `gzip`, `chmod`, `md5sum` |
-| **Servidor de Pré-visualização** | Web servers complexos (Nginx, Express) | Servidor em background controlado por sinais | `nc -N`, `setsid`, `ps`, `kill` |
+Um programa sed normaliza terminações CRLF para LF na saída. Os fontes permanecem intactos. Espaços significativos, indentação, quebras de linha Markdown e conteúdo de exemplos são preservados. A higienização atual não é um formatador geral de Markdown.
 
----
+### Gerar o sumário numerado
 
-## Restrições e Conformidade Estrita com o Enunciado
+GNU AWK reconhece títulos ATX de H1 a H6 e títulos Setext, desconsidera exemplos em código e calcula identificadores únicos. Outro programa AWK gera o sumário hierárquico numerado a partir desse índice. O mesmo índice alimenta a navegação web.
 
-Para garantir conformidade incondicional com as normas do enunciado:
-- **Zero Interatividade Bloqueante**: O sistema **não utiliza o comando `read`** nem qualquer chamada interativa de teclado. Toda instrução é parametrizada via argumentos de linha de comando (`$1`, `$@`), possibilitando integração perfeita em scripts headless e pipelines CI/CD.
-- **Volume de Código Inspecionado**: Enquanto a disciplina exige um limite mínimo de 30 linhas de código no `cloc`, a contagem atual dos fontes avaliados é produzida pelo comando `report`, usando o `cloc` instalado no ambiente.
-- **Exaustividade de Conceitos**: Todos os 20 conceitos do enunciado foram incorporados com propósito funcional real na resolução do problema documental.
+### Validar referências locais
+
+O compilador identifica links e imagens do subconjunto suportado de Markdown, resolve destinos a partir de cada capítulo e verifica fragmentos de títulos. O validador usa regex estendida com `grep -E` para identificar diagnósticos do índice e confere ativos por caminho canônico. Referências inexistentes ou destinos fora do projeto impedem a publicação.
+
+### Empacotar a publicação
+
+O programa gera HTML, Markdown consolidado, sumário, índices, métricas e ativos, depois cria um `.tar.gz` com `tar` e gzip. Um SHA-256 permite conferir a integridade do pacote. O release é uma publicação estática que deve ser servida por HTTP; não exige o servidor de desenvolvimento original.
+
+## Fronteira do núcleo em Shell
+
+O processamento proposto é implementado com Bash e programas AWK/sed, apoiados por utilitários GNU/Linux. O comando `all` funciona sem Python, Node ou downloads durante o build.
+
+A publicação contém JavaScript para renderizar Markdown e oferecer busca, temas e diagramas. O preview padrão é Bash com OpenBSD netcat; há um backend Python concorrente opcional. A exportação PDF usa Python/ReportLab. Os testes HTTP usam Python, e os testes da interface usam Node/jsdom. Essas dependências não substituem os cinco objetivos no núcleo Shell.
+
+O programa recebe parâmetros pela CLI e conteúdo por arquivos. `read` aparece em laços e no servidor, com entrada proveniente de arquivos, pipes ou HTTP; não há perguntas pelo teclado.
+
+## Critérios de sucesso
+
+- Os capítulos aparecem na ordem definida pelos caminhos de origem.
+- Títulos válidos produzem entradas numeradas e destinos únicos.
+- Um link local inválido faz a execução falhar e preserva a última publicação válida.
+- Ativos necessários acompanham a documentação.
+- O pacote é extraível e seu SHA-256 confere.
+- O preview carrega conteúdo, estilo e scripts sem CDN.
+- A entrega acadêmica registra a contagem real de código e as evidências dos conceitos.
+
+Os [testes e medições](05-benchmarks.md) explicam a verificação. Os [limites](06-conclusion.md) delimitam o Markdown, o ambiente e as garantias atuais.

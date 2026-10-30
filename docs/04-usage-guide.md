@@ -1,202 +1,240 @@
 # 04. Manual Operacional da CLI
 
-## Requisitos e Pré-requisitos do Sistema
+## Ambiente e dependências
 
-O **Catalyst Shell Engine** foi desenvolvido para operar em GNU/Linux, incluindo Ubuntu WSL, com Bash moderno:
+Execute em GNU/Linux ou Ubuntu WSL, com Bash e ferramentas GNU. Ubuntu 22.04 e 24.04 são os ambientes configurados na CI; Bash 5.x é recomendado. Não há suporte declarado a PowerShell nativo, POSIX sh, macOS ou Git Bash sem adaptação dos utilitários.
 
-- **Interpretador Shell**: GNU Bash 4.4 ou superior (a validação desta revisão foi executada no Ubuntu WSL).
-- **Utilitários do Sistema**: Utilitários padrão do GNU Coreutils (`cat`, `wc`, `sort`, `head`, `tail`, `date`, `chmod`, `mkdir`, `rm`, `nl`).
-- **Processadores de Texto e Regex**: `sed` (com suporte a expressões regulares estendidas `-E`), `gawk` (GNU AWK) e `grep` (com flags `-E` e `-o`).
-- **Compressão e Checksum**: `tar`, `gzip`, `md5sum` (com fallback automático em `cksum`).
-- **Servidor Web Local (Opcional para preview)**: OpenBSD netcat (`nc -N`), `setsid`, `flock`, `realpath` e `timeout`. Escuta apenas em `127.0.0.1`.
+O núcleo usa Bash, coreutils, findutils, grep, sed, GNU AWK (`gawk`), tar, gzip e util-linux (`flock` e `setsid`). `all` não precisa de Python ou Node. O preview exige OpenBSD netcat, incluindo as opções `-N` e `-k`; o backend concorrente acrescenta Python 3.10 ou superior. Os testes de integração usam Python, curl e cloc. O relatório Markdown exige cloc; o PDF acrescenta Python, ReportLab e fontes DejaVu. A verificação completa de desenvolvimento usa ShellCheck, Node 24.22.2 e npm.
 
----
+Instalar dependências ou atualizar bundles pode exigir internet. O build e a consulta da publicação pronta usam arquivos locais.
 
-## Execução diretamente no Linux
+## Instalação e execução diretamente no Linux
 
-No Ubuntu ou Debian, prepare as dependências e obtenha o projeto:
+No Ubuntu ou Debian:
 
 ```bash
 sudo apt update
-sudo apt install -y git bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc
+sudo apt install -y git bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc python3
 git clone https://github.com/matheustheus27/CatalystShellEngine.git
 cd CatalystShellEngine
 chmod +x catalyst.sh
-```
-
-Se já tiver clonado o repositório, entre no diretório existente. Execute:
-
-```bash
-./catalyst.sh all
-./catalyst.sh test
-./catalyst.sh report
-./catalyst.sh serve --port 8080
-```
-
-Abra `http://127.0.0.1:8080` no navegador. Ao terminar, encerre o preview com
-`./catalyst.sh serve --stop`. Os artefatos ficam em `dist/`.
-
-Para gerar o PDF acadêmico, prepare o exportador opcional:
-
-```bash
-sudo apt install -y python3 python3-venv fonts-dejavu-core
-python3 -m venv .venv-report
-.venv-report/bin/python -m pip install reportlab
-CATALYST_PDF_PYTHON=.venv-report/bin/python ./catalyst.sh report --pdf
-```
-
-O resultado fica em `dist/reports/sigaa-report.pdf`. Para outras distribuições,
-utilize pacotes equivalentes; o servidor exige OpenBSD netcat com a opção `-N`.
-
-## Permissões e Inicialização
-
-Antes da primeira execução, certifique-se de que o script principal possui permissões de execução adequadas:
-
-```bash
-# Conceder permissão de execução (Linux / macOS / Git Bash / WSL)
-chmod +x catalyst.sh
-
-# Instalar o autocompletar permanentemente no shell (~/.bashrc ou ~/.zshrc):
-./catalyst.sh completion
-
-# Ou carregar pontualmente na sessão atual:
-source scripts/completion.bash
-
-# Exibir tela de ajuda da CLI:
 ./catalyst.sh help
+./catalyst.sh all
+./catalyst.sh serve
 ```
 
----
+Se o repositório já existe, use sua cópia. Acesse **http://127.0.0.1:8000** e confira sumário, conteúdo, métricas e diagrama. O servidor executa em segundo plano; não é necessário deixar um comando de terminal aberto. Para encerrá-lo:
 
-## Matriz Completa de Comandos da CLI
+```bash
+./catalyst.sh serve --stop
+```
 
-| Subcomando | Descrição Operacional | Efeitos Colaterais / Artefatos Gerados |
-|---|---|---|
-| `./catalyst.sh all` | Executa o pipeline completo de ponta a ponta (build, sumário, auditoria, métricas, preview web e release compactado). | Gera todos os artefatos organizados sob `dist/`. |
-| `./catalyst.sh build` | Consolida todos os capítulos `docs/*.md` na ordem natural, higieniza o texto com `sed`, extrai o sumário com `awk` e compila o `index.html`. | `dist/docs/full-document.md`, `dist/docs/summary.md`, `dist/index.html` |
-| `./catalyst.sh validate` | Executa auditoria estrita de links Markdown internos e ativos locais de imagem via expressões regulares `grep -E -o`. | Relatório de validação no console. |
-| `./catalyst.sh toc` | Atualiza o snapshot consistente, incluindo o sumário hierárquico em AWK. | `dist/docs/summary.md` |
-| `./catalyst.sh sanitize` | Executa o programa em `sed` para remover espaços residuais em fim de linha e normalizar cabeçalhos Markdown. | `dist/docs/full-document.md` |
-| `./catalyst.sh stats` | Computa contagem de palavras e linhas via `wc`, extrai amostras de cabeçalho/rodapé e grava o sumário estatístico. | `dist/metrics/metrics.txt` |
-| `./catalyst.sh pack` | Compacta os artefatos de distribuição em `.tar.gz`, aplica permissões de segurança octais/simbólicas e gera assinatura `md5sum`. | `dist/releases/catalyst-release-*.tar.gz`, `*.tar.gz.md5` |
-| `./catalyst.sh report` | Gera o documento oficial unificado com o código-fonte numerado linha a linha via `nl -ba` como fonte para a entrega no SIGAA; exporte o PDF com `report --pdf`. | `dist/reports/sigaa-report.md` |
-| `./catalyst.sh test` | Executa a suíte de testes automatizados com integração e regressões (arquivos, permissões, parsing, HTTP, SHA-256 e relatório). | Saída de testes colorida no console. |
-| `./catalyst.sh watch` | Entra em modo de observação contínua, monitorando `docs/*.md` e recompilando automaticamente a cada salvamento. | Recompilação automática sob demanda. |
-| `./catalyst.sh serve` | Inicializa o servidor HTTP local em segundo plano (*background*), armazenando o PID para controle de ciclo de vida. | Processo em background na porta 8000 (ou customizada). |
-| `./catalyst.sh serve --stop` | Localiza o PID do servidor em execução e envia sinal de término `SIGTERM` (`kill -15`) com fallback para `SIGKILL` (`kill -9`). | Encerra o processo e limpa o estado privado por usuário e projeto em `/tmp/catalyst-*`. |
-| `./catalyst.sh clean` | Limpa com segurança o diretório de distribuição `dist/`, removendo artefatos intermediários. | Esvazia `dist/`. |
-| `./catalyst.sh help` | Imprime a documentação de uso e exemplos práticos formatados no terminal. | Saída padrão. |
+Em outras distribuições, instale os pacotes equivalentes. O projeto usa extensões GNU, portanto substituir gawk por outro awk ou OpenBSD netcat por outra variante pode impedir a execução.
 
----
+## Execução no Windows com Ubuntu WSL
 
-## Exemplos Práticos de Uso
+Caso ainda não tenha Ubuntu WSL, a instalação pode ser solicitada no PowerShell:
 
-### 1. Compilação e Publicação Completa
+```powershell
+wsl --install -d Ubuntu
+```
+
+Conclua a configuração solicitada pelo Windows e pelo Ubuntu. Para trabalhar, abra o terminal Linux:
+
+```powershell
+wsl -d Ubuntu
+```
+
+Dentro dele, instale as dependências do procedimento Linux. Para a cópia deste projeto em `P:\Git\GitHub\CatalystShellEngine`:
+
+```bash
+cd /mnt/p/Git/GitHub/CatalystShellEngine
+bash catalyst.sh all
+bash catalyst.sh serve
+```
+
+Também é possível chamar a CLI pelo PowerShell, executando-a no WSL:
+
+```powershell
+wsl -d Ubuntu --exec bash /mnt/p/Git/GitHub/CatalystShellEngine/catalyst.sh all
+wsl -d Ubuntu --exec bash /mnt/p/Git/GitHub/CatalystShellEngine/catalyst.sh serve
+wsl -d Ubuntu --exec bash /mnt/p/Git/GitHub/CatalystShellEngine/catalyst.sh test
+```
+
+Adapte o caminho à sua máquina. Abra o endereço HTTP no navegador do Windows. Para desempenho e semântica de permissões Linux, uma cópia em `~/projetos/CatalystShellEngine` dentro do WSL é preferível a uma unidade montada em `/mnt/`. A cópia montada continua suportada, com as diferenças transacionais descritas na [arquitetura](02-architecture.md).
+
+## Preparação dos capítulos
+
+Os arquivos de entrada ficam em `docs/`, inclusive em subpastas. Use UTF-8 e a extensão minúscula `.md`. Exemplos de nomes são `01-visao-geral.md`, `02-arquitetura.md` e `10-operacao.md`. A ordenação natural usa o caminho inteiro; organizar subpastas também afeta a sequência.
+
+Use um H1 por capítulo e uma hierarquia progressiva de títulos. Não inclua a numeração do sumário manualmente no texto do título: o AWK a calcula. A documentação deste repositório conserva prefixos de capítulo nos títulos para identificação acadêmica; eles fazem parte do texto, não controlam os contadores.
+
+Exemplo de conteúdo para um novo capítulo:
+
+```markdown
+# Operação do projeto
+
+## Preparação
+
+Consulte a [arquitetura](02-architecture.md).
+
+## Identidade visual
+
+![Logotipo](../images/logo.svg)
+
+## Verificação
+
+Execute a validação antes de gerar a publicação.
+```
+
+Esse exemplo pressupõe um arquivo diretamente em `docs/`. Em subpastas, ajuste os caminhos a partir do arquivo de origem. O arquivo `docs/07-exemplo.md`, por exemplo, entra na compilação; exemplos que não devem ser publicados precisam ficar fora de `docs/`.
+
+### Markdown reconhecido
+
+O compilador reconhece títulos ATX H1-H6 e Setext, cercas de código com crases ou tils respeitando o comprimento, exemplos indentados, código inline e links inline ou de referência. Há suporte a referências completas, colapsadas e abreviadas no escopo de cada capítulo, além de destinos com parênteses balanceados.
+
+Links entre capítulos viram âncoras do documento consolidado. Um link para um Markdown local fora de `docs/` é tratado como arquivo referenciado, não como um novo capítulo. Referências a arquivos são resolvidas pelo caminho do capítulo; algumas referências antigas relativas à raiz são mantidas por compatibilidade. Para novos documentos, prefira caminhos relativos explícitos.
+
+Títulos recebem IDs ASCII, com normalização de acentos e sufixos como `-1` para repetições. Consulte `dist/docs/headings.json` para os IDs efetivamente gerados. Um link para título repetido deve indicar o sufixo correto dentro do capítulo de destino.
+
+O parser cobre um subconjunto de Markdown, não toda a especificação CommonMark. Containers profundamente aninhados não são plenamente suportados. A decodificação de caminhos cobre espaços e parênteses codificados (`%20`, `%28`, `%29`), não toda codificação URI possível. Nomes de capítulos não podem conter tabulação ou quebra de linha. URLs externas não têm disponibilidade verificada, e imagens remotas são substituídas por texto alternativo na interface offline.
+
+## Referência dos comandos
+
+### `all` e `build`
+
 ```bash
 ./catalyst.sh all
+./catalyst.sh build
 ```
 
-### 2. Execução da Suíte de Testes Automatizados
+Ambos catalogam, consolidam, normalizam, geram sumário, validam referências, calculam métricas e preparam a interface. `all` também refaz o release. Nenhum deles gera o relatório acadêmico automaticamente.
+
+### `validate`
+
 ```bash
-./catalyst.sh test
+./catalyst.sh validate
 ```
-A suíte copia os fontes para um diretório temporário Linux, escolhe uma porta livre
-e verifica permissões, conteúdo do pacote, checksum SHA-256 e respostas HTTP.
-As regressões incluem arquivos com espaços, diretório vazio, links quebrados,
-âncoras inválidas, portas inválidas, HEAD/404/403/405, reinício e liberação da porta.
-Não depende de um build anterior. A quantidade de testes é informada na execução.
 
-### 3. Geração do Relatório SIGAA com Código Numerado (`nl -ba`)
+Verifica os fontes atuais em staging e retorna falha para referências locais inválidas. Não altera a publicação existente. Não consulta URLs externas.
+
+### `toc`, `sanitize` e `stats`
+
 ```bash
-./catalyst.sh report
+./catalyst.sh toc
+./catalyst.sh sanitize
+./catalyst.sh stats
 ```
-Gera `dist/reports/sigaa-report.md` unificando a proposta do problema, o código-fonte integral de `catalyst.sh` com cada linha numerada pelo utilitário `nl -ba` e a planilha de 20 conceitos com números de linhas calculados a partir do código atual. Também inclui o módulo do servidor e a saída real do `cloc`. Para o PDF obrigatório use `report --pdf` com Python/ReportLab em ambiente isolado, conforme o documento acadêmico da raiz.
 
-### 4. Modo Observador com Live-Reload
+Reconstroem o snapshot completo para manter documento, índices e interface coerentes. Não são operações isoladas sobre um único arquivo. `sanitize` normaliza CRLF, preservando espaços significativos; `stats` calcula linhas, palavras, capítulos e amostras. Esses comandos não refazem o pacote de release.
+
+### `pack`
+
+```bash
+./catalyst.sh pack
+(cd dist/releases && sha256sum -c catalyst-release-1.0.0.tar.gz.sha256)
+tar -tzf dist/releases/catalyst-release-1.0.0.tar.gz
+```
+
+Empacota a publicação existente; se faltar uma saída básica, executa o build antes. Não detecta sozinho se os fontes foram editados depois do snapshot. Use `all` para publicar conteúdo novo. O pacote contém relatórios já presentes na saída: gere o PDF antes de executar `pack` se ele deve acompanhar o release.
+
+### `serve`
+
+```bash
+./catalyst.sh serve                         # Bash, porta 8000.
+./catalyst.sh serve --restart --port 8080   # Reinicia e troca a porta.
+./catalyst.sh serve --restart               # Preserva porta e backend.
+./catalyst.sh serve --stop
+```
+
+`serve 8080` também aceita a porta posicional. Há um único preview controlado por usuário e projeto. Para mudar um servidor ativo, use `--restart`. O servidor não executa um build por conta própria e precisa de `dist/` existente.
+
+O modo Bash atende sequencialmente com listener persistente e fila de conexões. Para clientes simultâneos, use Python opcional:
+
+```bash
+./catalyst.sh serve --restart --backend threaded --port 8080
+```
+
+`--concurrent` é um atalho para `--backend threaded`. Ambos escutam apenas em `127.0.0.1`, acompanham novos builds sem reiniciar e são destinados ao desenvolvimento local.
+
+### `watch`
+
 ```bash
 ./catalyst.sh watch
 ```
-Mantém um laço contínuo no terminal. Ao editar e salvar qualquer arquivo em `docs/`, o orquestrador detecta a alteração de timestamp e recompila a documentação imediatamente.
 
-### 5. Servidor de Pré-visualização com Porta Customizada
+Executa um primeiro build e verifica a cada segundo o checksum dos caminhos e conteúdos de arquivos `.md` em `docs/`. Detecta inclusão, exclusão e edição, não apenas timestamp. Após um erro, mantém a publicação anterior e tenta de novo. Não observa templates, imagens ou bibliotecas; alterá-los exige build manual. Não há recarga automática da aba: atualize o navegador. Use Ctrl+C para encerrar a observação.
+
+### `report`
+
 ```bash
-# Iniciar na porta padrão (8000)
-./catalyst.sh serve
-
-# Iniciar em porta específica (ex: 8080)
-./catalyst.sh serve 8080
-# ou
-./catalyst.sh serve --port 8080
-
-# Encerrar o servidor ativo via sinal kill
-./catalyst.sh serve --stop
+./catalyst.sh all
+./catalyst.sh report
 ```
 
-### 6. Recursos da Interface Web Interativa (`index.html`)
-- **Raiz Limpa do `dist/`**: O `index.html` reside de forma limpa e isolada na raiz de `dist/`, consumindo automaticamente as subpastas `docs/` e `metrics/`.
-- **Busca Instantânea**: Digite no campo `🔍 Buscar no sumário...` para filtrar seções em tempo real.
-- **Alternador de Tema**: Clique no botão `🌓 Tema` para alternar entre o tema escuro *glassmorphic* e o tema claro corporativo (a preferência é salva no navegador).
-- **Modo Foco / Leitura Ampla**: Oculte a barra lateral com o botão `📐 Foco` e restaure-a a qualquer momento pelo botão flutuante `📑 Sumário`.
-- **Exportação para PDF**: Clique no botão `🖨️ PDF` (ou `Ctrl + P`) para imprimir ou salvar como PDF formatado em estilo apostila A4 via regras de estilo `@media print`.
-- **Catalyst DocBot (Assistente Virtual Integrado)**:
-  - Clique no botão flutuante 💬 no canto inferior direito para abrir a janela de chat.
-  - Faça perguntas livres sobre conceitos, comandos ou arquitetura (ex: *"como funciona o sed"*, *"listar comandos"*, *"o que faz o conceito 19"*).
-  - Use comandos estilo terminal: `/help`, `/conceitos`, `/cli`, `/stats`, `/benchmark`, `/limpar`.
-  - Clique no botão **"📖 Ver no documento"** exibido nas respostas para saltar com scroll suave diretamente até a âncora correspondente no compêndio.
+Gera `dist/reports/sigaa-report.md` com problema, solução, planilha dinâmica, cloc e fontes numerados. Se já existe snapshot completo, ele é reaproveitado; por isso execute `all` depois de alterar os capítulos. A preparação do PDF está no [guia acadêmico](../CEFET_REPORT.md).
 
----
+### `test`
 
-## Resolução de Problemas (Troubleshooting)
-
-### A porta do servidor já está em uso
-Se a mensagem `A porta 8000 ja possui um processo ativo` for exibida, execute:
 ```bash
-./catalyst.sh serve --stop
-```
-O orquestrador utilizará `ps` e `kill` para encerrar o processo registrado A ferramenta não encerra processos de terceiros; escolha outra porta se necessário.
-
-### Caracteres CRLF (Windows / DOS)
-Caso execute o script em ambiente Linux após clonar no Windows e receber mensagens de erro como `\r: command not found`, converta as quebras de linha:
-```bash
-sed -i 's/\r$//' catalyst.sh
+./catalyst.sh test
 ```
 
+Executa integração, regressões, transações e HTTP em fixtures temporárias Linux, sem depender de um build prévio no projeto. Python, curl, cloc e os utilitários de execução devem estar disponíveis. Os testes Node da interface são uma etapa adicional da verificação completa descrita no [capítulo de testes](05-benchmarks.md).
 
-## Validação local e integração contínua
+### `completion`, `help` e `clean`
 
 ```bash
-sudo apt install -y shellcheck python3
-# Instale Node.js 24.22.2 para os testes da interface.
-npm ci --ignore-scripts --no-audit --no-fund
-bash scripts/ci/check.sh
+source scripts/completion.bash             # Somente a sessão Bash atual.
+./catalyst.sh completion install            # Adiciona configuração ao perfil.
+./catalyst.sh completion uninstall          # Remove essa configuração.
+./catalyst.sh help
+./catalyst.sh clean                         # Publica uma saída vazia.
 ```
 
-O mesmo script é executado no GitHub Actions, no Ubuntu 22.04 e 24.04. A análise
-ShellCheck inclui todos os scripts e módulos. Os testes usam fixtures Linux e
-verificam os modos de publicação `symlink` e `directory`, duas execuções simultâneas,
-interrupções, rollback e acesso HTTP à geração atual. `validate` não publica;
-`toc`, `sanitize` e `stats` recompilam um snapshot completo.
+A configuração permanente altera o perfil do usuário; é opcional. As definições fornecidas são para Bash. `clean` esvazia a publicação, inclusive relatórios e releases; não é necessário para um build normal e não apaga os capítulos de origem. Encerre o preview antes de limpar a saída que ele serve.
 
+## Uso da interface
 
-## Interface offline e backend concorrente
+O painel apresenta sumário hierárquico, busca de títulos, métricas, tema claro/escuro e modo foco. O botão PDF usa a impressão do navegador para a documentação web; não substitui o relatório acadêmico com planilha e código numerado.
+
+O Catalyst Assistant é uma busca local baseada em seções e comandos, sem modelo remoto. Ele não executa comandos no sistema. Mermaid renderiza diagramas localmente; Marked e DOMPurify também são servidos de `ui/vendor/`. Não há dependência de CDN para consultar a publicação.
+
+## Distribuição e manutenção
+
+Extraia o `.tar.gz` em um diretório de publicação e sirva a pasta extraída por HTTP. A consulta é estática; não precisa executar `catalyst.sh`. Configure no servidor os cabeçalhos CSP, nosniff e a política sandbox dos ativos descritos na arquitetura. O preview incluído não deve ser exposto como servidor de produção.
+
+O manifesto `vendor/manifest.json` registra as versões, e `vendor/SHA256SUMS` registra os bundles e licenças. Para atualizar dependências, revise as versões fixadas em `scripts/vendor/update.py`, execute explicitamente `python3 scripts/vendor/update.py` com internet e confira o diff, as licenças, o manifesto e os hashes. Em seguida execute a verificação completa. Não edite um bundle minificado para apenas ajustar seu checksum.
+
+## Solução de problemas
+
+### Página sem estilo ou parada em carregamento
+
+Confirme que está usando o endereço HTTP do preview e que `dist/ui/app.css`, `dist/ui/app.js` e `dist/ui/vendor/` existem. Execute:
 
 ```bash
-./catalyst.sh serve --backend threaded --port 8080
+./catalyst.sh all
 ./catalyst.sh serve --restart
-./catalyst.sh serve --stop
 ```
 
-O modo `threaded` requer Python 3.10+ e atende até 32 conexões ativas; clientes
-incompletos recebem timeout. O modo `bash` permanece disponível e é o padrão.
-O reinício preserva porta e backend. Ambos utilizam o mesmo lock de publicação.
+Atualize com Ctrl+F5. O servidor Bash mantém o listener entre respostas para não perder os pedidos paralelos de CSS e scripts; os valores CSP são normalizados para impedir CR residual de um checkout Windows. Se persistir, consulte os pedidos e mensagens no painel de rede do navegador e o `server.log` no diretório de estado.
 
-A interface carrega CSS, JavaScript e bibliotecas de `dist/ui/`, sem CDN. Imagens
-remotas do conteúdo viram texto alternativo. HTML de documentos e do DocBot passa
-por DOMPurify; Mermaid usa modo estrito e seu SVG também é sanitizado. A política
-CSP permite apenas scripts locais e aplica sandbox aos arquivos em `assets/`.
+### Dependência ausente ou variante incompatível
 
-Os capítulos podem usar subdiretórios, títulos H1–H6 ou Setext, IDs repetidos com
-sufixos, referências Markdown e caminhos relativos ao capítulo. O compilador
-valida fragmentos de arquivos Markdown locais e copia os ativos referenciados.
-O sumário e a interface consomem o mesmo índice. A sintaxe não cobre CommonMark
-inteiro; construções de containers profundamente aninhados exigem revisão.
+Instale os pacotes indicados e confira `gawk --version`, `bash --version` e `nc -h`. O preview exige OpenBSD netcat, mesmo quando o backend concorrente é selecionado pelo controlador atual. Para erro de ReportLab ou fonte, siga a preparação do PDF no guia acadêmico.
+
+### Referência local inválida
+
+Leia o diagnóstico de arquivo, linha e destino. Corrija o caminho no capítulo de origem; verifique capitalização em Linux, fragmento e sufixo de títulos repetidos. Rode `validate` e depois `all`. A última publicação válida permanece disponível quando a validação falha.
+
+### Porta ocupada ou servidor antigo
+
+Use `serve --restart --port 8080` para escolher outra porta. O projeto não encerra processos de terceiros. Depois de alterar o código do servidor, reinicie-o; mudanças apenas nos capítulos são atendidas pelo processo existente após um novo build.
+
+### Permissão de execução ou montagem Windows
+
+Use `bash catalyst.sh all` se o script não estiver executável, ou ajuste `chmod +x` no filesystem Linux. Em DrvFS, permissões dependem das opções de montagem. Não remova locks ou gerações manualmente enquanto houver processos usando o projeto.
+
+### Build interrompido
+
+A próxima operação de escrita ou requisição do preview pode recuperar uma publicação pendente pelo journal. Se houver mensagem de recuperação pendente, preserve `.catalyst/previous` e o estado para diagnóstico. Não edite `dist/` durante a recuperação.
