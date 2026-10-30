@@ -4,7 +4,7 @@
 
 Execute em GNU/Linux ou Ubuntu WSL, com Bash e ferramentas GNU. Ubuntu 22.04 e 24.04 são os ambientes configurados na CI, Bash 5.x é recomendado. Não há suporte declarado a PowerShell nativo, POSIX sh, macOS ou Git Bash sem adaptação dos utilitários.
 
-O núcleo usa Bash, coreutils, findutils, grep, sed, GNU AWK (`gawk`), tar, gzip e util-linux (`flock` e `setsid`). `all` não precisa de Python ou Node. O preview exige OpenBSD netcat, incluindo as opções `-N` e `-k`, o backend concorrente acrescenta Python 3.10 ou superior. Os testes de integração usam Python, curl e cloc. O relatório Markdown exige cloc, o PDF acrescenta Python, ReportLab e fontes DejaVu. A verificação completa de desenvolvimento usa ShellCheck, Node 24.22.2 e npm.
+O núcleo usa Bash, coreutils, findutils, grep, sed, GNU AWK (`gawk`), tar, gzip e util-linux (`flock` e `setsid`). `all` não precisa de Python ou Node. O preview exige OpenBSD netcat, incluindo as opções `-N` e `-k`, o backend concorrente acrescenta Python 3.10 ou superior. Os testes de integração usam Python, curl e cloc. O relatório Markdown exige cloc, o PDF acrescenta Python, ReportLab e fontes DejaVu. A verificação completa de desenvolvimento usa ShellCheck, Node 24.22.2, npm e o Chromium instalado pelo Playwright.
 
 Instalar dependências ou atualizar bundles pode exigir internet. O build e a consulta da publicação pronta usam arquivos locais.
 
@@ -288,3 +288,42 @@ Use `bash catalyst.sh all` se o script não estiver executável, ou ajuste `chmo
 ### Build interrompido
 
 A próxima operação de escrita ou requisição do preview pode recuperar uma publicação pendente pelo journal. Se houver mensagem de recuperação pendente, preserve `.catalyst/previous` e o estado para diagnóstico. Não edite `dist/` durante a recuperação.
+
+## Releases reproduzíveis
+
+O pacote normaliza a ordem de entradas, UID/GID 0, mtime, permissões 755 para diretórios e 644 para arquivos, além de omitir nome e data no gzip. Os arquivos publicados não têm suas permissões ou datas modificadas; a normalização acontece em uma cópia temporária. O mesmo payload gera o mesmo SHA-256 com as mesmas versões de GNU tar e gzip.
+
+Para reconstruir também os artefatos que contêm datas, use um epoch Unix fixo:
+
+```bash
+export SOURCE_DATE_EPOCH=1700000000
+./catalyst.sh all
+./catalyst.sh report
+./catalyst.sh pack
+(cd dist/releases && sha256sum -c catalyst-release-1.0.0.tar.gz.sha256)
+```
+
+A referência deve ser um inteiro de 0 a 253402300799; valores inválidos são rejeitados antes da publicação. Métricas e relatório usam UTC e uma formatação estável. Sem a variável, preservam a data da execução e, portanto, builds independentes podem gerar conteúdos diferentes. O tar usa mtime zero quando não há epoch explícito.
+
+`pack` inclui os relatórios já presentes. Ao comparar builds completos, mantenha iguais os fontes, o epoch, os relatórios incluídos e as versões das ferramentas, bibliotecas e fontes tipográficas. O cloc mantém sua contagem real, com duração e taxas de processamento omitidas. O exportador PDF ativa o modo invariável quando recebe SOURCE_DATE_EPOCH; para compará-lo, use também a mesma versão do ReportLab e o mesmo conjunto de fontes. Uma assinatura digital continua sendo um recurso separado, ainda não implementado.
+
+## Testes em Chromium real
+
+Instale as dependências de desenvolvimento e o navegador no Linux/WSL:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+npx playwright install --with-deps --only-shell chromium
+npm run test:browser
+```
+
+A instalação de dependências do sistema pode solicitar privilégios de administrador. O procedimento segue a [documentação oficial do Playwright](https://playwright.dev/docs/browsers). Depois de instalado, o teste carrega somente recursos locais. Para incluir o livro principal:
+
+```bash
+./catalyst.sh all
+npm run test:browser -- --project
+```
+
+Os testes usam os backends Bash e Python, sem substituir o servidor por um mock. Exercitam CSS/JS, navegação por títulos, busca, persistência do tema, foco, viewport de 390x844, impressão real em memória, diagramas, bloqueio de scripts inline e sandbox dos ativos HTML. O teste não envia arquivos a serviços externos nem substitui uma revisão editorial da apresentação.
+
+Capturas desktop/móvel são gravadas em `.catalyst/browser-artifacts/`. Em falhas, há uma captura adicional e um trace ZIP para inspeção com `npx playwright show-trace CAMINHO`. A CI executa essa etapa e guarda suas evidências. Playwright e Chromium são dependências de desenvolvimento; o núcleo em Shell continua funcionando sem Node ou navegador instalado.

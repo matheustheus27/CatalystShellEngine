@@ -5,6 +5,9 @@
 set -eo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=scripts/core/reproducibility.sh
+source "$ROOT/scripts/core/reproducibility.sh"
+validate_source_date_epoch
 OUT="${1:-$ROOT/dist/reports/sigaa-report.md}"
 mkdir -p "$(dirname "$OUT")"
 TMP=$(mktemp "${OUT}.tmp.XXXXXXXX")
@@ -113,7 +116,7 @@ distintos incluem os 15 solicitados no enunciado.
 INTRO
     concept 01 'Comandos basicos' catalyst.sh 'echo " Data do Sistema:' 'echo e date exibem a data da execucao.'
     concept 02 'Processamento de texto' catalyst.sh 'TOTAL_LINES=$(wc -l' 'wc conta as linhas do documento.'
-    concept 03 'Sistema de arquivos' scripts/core/packager.sh 'tar -czf "$output_archive"' 'tar compacta os artefatos em gzip.'
+    concept 03 'Sistema de arquivos' scripts/core/packager.sh 'tar --sort=name' 'tar ordena e normaliza os artefatos; gzip comprime sem data no cabecalho.'
     concept 04 'Sistema de arquivos' catalyst.sh 'chmod 755 "$DIST_DIR"' 'chmod aplica permissoes octais ao diretorio.'
     concept 05 'Processos' scripts/core/server.sh 'ps -p "$pid"' 'ps verifica a existencia do processo registrado.'
     concept 06 'Processos' scripts/core/server.sh 'kill -15 -- "-$pid"' 'SIGTERM encerra o grupo de processos do preview.'
@@ -134,8 +137,8 @@ INTRO
     printf '\n## 3. Verificacao de linhas com cloc\n\n'
     command -v cloc >/dev/null || { echo 'Instale cloc para gerar a evidencia obrigatoria.' >&2; exit 1; }
     printf 'Comando: `cloc catalyst.sh scripts/core/*.{sh,awk,py} scripts/academic-report.sh`\n\n```text\n'
-    cloc --quiet "$ROOT/catalyst.sh" "$ROOT"/scripts/core/*.{sh,awk,py} "$ROOT/scripts/academic-report.sh"
-    printf '```\n\nA contagem e produzida pela ferramenta, sem reutilizar valores historicos.\n'
+    cloc --quiet "$ROOT/catalyst.sh" "$ROOT"/scripts/core/*.{sh,awk,py} "$ROOT/scripts/academic-report.sh" | sed '/github.com\/AlDanial\/cloc/s/  T=.*//'
+    printf '```\n\nA contagem e produzida pela ferramenta, sem reutilizar valores historicos. A duracao e as taxas da ferramenta sao omitidas para nao variar o artefato.\n'
     printf '\n## 4. Codigo-fonte numerado\n'
     for file in catalyst.sh scripts/core/*.{sh,awk,py} scripts/academic-report.sh; do
         language=bash
@@ -145,7 +148,7 @@ INTRO
         printf '```\n'
     done
     printf '\n## 5. Geracao do relatorio\n\n'
-    printf 'Gerado em: %s.\n' "$(date -Iseconds)"
+    printf 'Gerado em: %s.\n' "$(artifact_date -Iseconds)"
     printf 'Apoio a entrega: scripts/academic-report.sh. O exportador PDF opcional e separado do nucleo avaliado.\n'
 } > "$TMP"
 mv "$TMP" "$OUT"

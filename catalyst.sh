@@ -57,6 +57,9 @@ source "$SCRIPTS_DIR/core/transaction.sh"
 source "$SCRIPTS_DIR/core/completion-command.sh"
 # shellcheck source=scripts/core/cli-options.sh
 source "$SCRIPTS_DIR/core/cli-options.sh"
+# shellcheck source=scripts/core/reproducibility.sh
+source "$SCRIPTS_DIR/core/reproducibility.sh"
+validate_source_date_epoch
 
 # Atributo de variavel: inteira (Conceito 12)
 declare -i TOTAL_DOCS=0
@@ -153,7 +156,7 @@ compute_statistics() {
     # Redirecionamento avancado para relatorio (Conceito 07)
     {
         echo "================ METRICAS DO CATALYST ================"
-        echo "Gerado em         : $(date)"
+        echo "Gerado em         : $(artifact_date)"
         echo "Total de Capitulos: $TOTAL_DOCS"
         echo "Total de Linhas   : $TOTAL_LINES"
         echo "Total de Palavras : $TOTAL_WORDS"

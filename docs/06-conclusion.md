@@ -16,6 +16,8 @@ Os testes cobrem falhas, concorrência de escritores, interrupções, recuperaç
 
 As pastas de entrada e saída são configuráveis, com estado independente por publicação. A auditoria Markdown registra a última tentativa, e o exemplo completo demonstra erros intencionais e preservação da saída em cópia temporária.
 
+Os releases normalizam metadados e aceitam SOURCE_DATE_EPOCH. A interface também é verificada em Chromium real, com capturas de tela e testes de navegação, responsividade, CSP e impressão.
+
 ## Limites atuais
 
 - O parser implementa um subconjunto de Markdown, não toda a especificação CommonMark. Containers profundamente aninhados e codificações URI além das documentadas podem exigir adaptação do conteúdo.
@@ -25,18 +27,18 @@ As pastas de entrada e saída são configuráveis, com estado independente por p
 - O preview Bash é sequencial, o backend Python permite concorrência limitada. Ambos são locais, sem TLS ou autenticação, e não se destinam à produção.
 - `watch` consulta checksums de Markdown a cada segundo. Não observa templates ou ativos e não recarrega automaticamente o navegador.
 - `pack` e `report` podem aproveitar uma publicação existente, atualizar os fontes exige um novo build antes da entrega.
-- SHA-256 verifica integridade contra uma referência confiável, não substitui assinatura digital. O tarball ainda não é reproduzível byte a byte.
+- SHA-256 verifica integridade contra uma referência confiável, não substitui assinatura digital. O tarball é determinístico para o mesmo payload e toolchain; SOURCE_DATE_EPOCH fixa as datas dos artefatos que serão reconstruídos.
 - A consulta web funciona offline com os bundles presentes. Instalação de dependências e atualização de bibliotecas podem exigir internet.
-- Os testes da interface usam DOM simulado, a apresentação e o PDF também precisam de revisão visual.
+- A interface possui testes jsdom e Chromium real; a apresentação e o PDF ainda precisam de revisão visual e editorial.
 
 ## Continuidade recomendada
 
 As próximas melhorias podem manter o mesmo escopo de processamento documental:
 
 1. Validação externa opcional por HTTP, com timeout, cache, limite de concorrência e distinção entre falha de rede e URL inexistente.
-2. Releases reproduzíveis, normalizando metadados do tar e registrando um manifesto dos fontes, assinatura digital como recurso separado.
+2. Manifesto verificável dos fontes e assinatura digital, complementando os releases determinísticos já implementados.
 3. Observação por inotify com fallback por checksum, debounce e cobertura de templates, ativos e scripts.
 4. Ampliação de casos de falha, como disco cheio, dependências ausentes, arquivos grandes e mais estruturas Markdown.
-5. Testes automatizados em navegador real para complementar jsdom e verificar layout, CSP e impressão.
+5. Ampliar a matriz de navegadores e adicionar comparação visual entre versões; o Chromium já complementa jsdom para layout, CSP e impressão.
 
 Esses itens são perspectivas de evolução, não funcionalidades declaradas como prontas. O fluxo atual e seus critérios de sucesso estão na [visão geral](01-overview.md), as instruções de operação estão no [manual](04-usage-guide.md).

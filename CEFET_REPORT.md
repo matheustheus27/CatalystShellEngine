@@ -20,7 +20,7 @@ A [visão geral](docs/01-overview.md#proposta-apresentada) preserva a mensagem a
 - **Validação:** regex em GNU AWK e `grep -E`, resolução de links por capítulo, verificação de fragmentos e caminhos canônicos dos ativos.
 - **Release:** HTML, Markdown, índices, métricas e ativos em `.tar.gz`, com permissões e checksum SHA-256.
 
-A CLI e os módulos de geração são Shell com AWK/sed e utilitários GNU/Linux. O HTML gerado usa JavaScript e bibliotecas locais para apresentação. O preview padrão é Bash/netcat, o backend Python concorrente é opcional. Python/ReportLab exporta o PDF, Python participa dos testes e Node/jsdom testa a interface. O comando `all` não depende desses runtimes.
+A CLI e os módulos de geração são Shell com AWK/sed e utilitários GNU/Linux. O HTML gerado usa JavaScript e bibliotecas locais para apresentação. O preview padrão é Bash/netcat, o backend Python concorrente é opcional. Python/ReportLab exporta o PDF, Python participa dos testes e Node/jsdom e Chromium/Playwright testam a interface. O comando `all` não depende desses runtimes.
 
 A entrada externa são os arquivos Markdown e os ativos, não dados digitados durante a execução. Os usos de `read` recebem arquivos, pipes ou HTTP. Os argumentos da CLI escolhem a operação.
 
@@ -102,3 +102,9 @@ Confira eventuais alterações comunicadas pelo professor antes da entrega. A ag
 - **18-20 min:** responda perguntas e delimite os recursos opcionais e as limitações.
 
 Prepare os exemplos de falha em uma cópia temporária para manter a versão de entrega íntegra. Instale previamente as dependências, confirme a porta disponível e use os bundles locais para não depender da rede durante a apresentação.
+
+## Reprodutibilidade e navegador real
+
+O pacote normaliza metadados e possui testes de igualdade binária. SOURCE_DATE_EPOCH fixa as datas das métricas e do relatório; o PDF usa o modo invariável quando essa variável é informada. A contagem do cloc permanece real, com duração e taxas omitidas para estabilizar o artefato. Mantenha toolchain e fontes iguais ao comparar releases.
+
+A verificação completa inclui Chromium real, além de jsdom: carregamento, navegação, temas, viewport móvel, impressão, CSP e sandbox dos ativos. O manual descreve a instalação do navegador e os arquivos de evidência; essas dependências pertencem aos testes de desenvolvimento, sem substituir o núcleo Shell.

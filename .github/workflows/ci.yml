@@ -35,6 +35,8 @@ jobs:
           package-manager-cache: false
       - name: Dependencias dos testes da interface
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Chromium para testes reais
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Registrar ambiente
         run: |
           bash --version
@@ -50,4 +52,12 @@ jobs:
             dist/releases/*
             dist/reports/sigaa-report.md
           if-no-files-found: error
+          retention-days: 14
+      - name: Evidencias do navegador
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: chromium-${{ matrix.os }}
+          path: .catalyst/browser-artifacts/
+          if-no-files-found: ignore
           retention-days: 14

@@ -35,4 +35,5 @@ assert 'transacoes, interrupcoes e concorrencia' bash "$ROOT/scripts/tests/trans
 assert 'backends HTTP e clientes simultaneos' python3 "$ROOT/scripts/tests/http_backends.py"
 assert 'pastas configuraveis e auditoria Markdown' python3 "$ROOT/scripts/tests/configuration.py"
 assert 'demonstracao completa com rollback' bash "$ROOT/catalyst.sh" demo
+assert 'releases reproduziveis' python3 "$ROOT/scripts/tests/reproducibility.py"
 echo 'Integracao, regressoes e transacoes aprovadas.'

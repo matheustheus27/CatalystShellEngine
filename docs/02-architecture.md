@@ -54,7 +54,7 @@ O navegador busca documento, índices e métricas por HTTP. Marked renderiza Mar
 
 `packager.sh` inclui `docs`, `metrics`, `reports`, `index.html`, `ui` e, quando existe, `assets` no tarball. `releases/` não entra no próprio pacote. O módulo aplica permissão simbólica ao arquivo e gera `.sha256`, além de `.md5` por compatibilidade ou `.cksum` quando MD5 não está disponível.
 
-SHA-256 é uma verificação de integridade comparada a uma referência confiável, não é assinatura digital. O pacote ainda não normaliza datas e metadados para builds reproduzíveis byte a byte.
+SHA-256 é uma verificação de integridade comparada a uma referência confiável, não é assinatura digital. O pacote normaliza ordem, mtime, proprietário, grupo e permissões em uma cópia privada; GNU tar e gzip sem nome/data no cabeçalho produzem o mesmo arquivo para o mesmo payload e versões das ferramentas. SOURCE_DATE_EPOCH permite fixar também as datas das métricas e do relatório.
 
 ## Responsabilidades dos componentes
 
@@ -65,7 +65,8 @@ SHA-256 é uma verificação de integridade comparada a uma referência confiáv
 - `scripts/core/sanitizer.sh`: normalização CRLF por sed.
 - `scripts/core/validator.sh` e `validation-report.awk`: conferência dos ativos e relatório Markdown da última tentativa.
 - `scripts/core/preview.sh`: preparação da interface e cópia dos ativos.
-- `scripts/core/packager.sh`: tarball, permissões e checksums.
+- `scripts/core/packager.sh`: tarball determinístico, permissões e checksums.
+- `scripts/core/reproducibility.sh`: validação de SOURCE_DATE_EPOCH e datas de artefatos em UTC.
 - `scripts/core/transaction.sh`: staging, bloqueios, publicação e recuperação.
 - `scripts/core/server.sh`: preview Bash, PID, porta, sinais e ciclo de vida dos dois backends.
 - `scripts/core/server-threaded.py`: preview Python concorrente opcional.
@@ -132,3 +133,11 @@ O diretório do motor continua sendo a origem dos módulos, templates, bibliotec
 Saídas com nomes diferentes têm locks, staging e gerações independentes, compartilhados com seus previews. O marcador `.catalyst-output` identifica diretórios gerados; ele não é incluído no tarball estático. A publicação padrão preserva compatibilidade com a estrutura anterior.
 
 O compilador registra ocorrências locais válidas, ativos, URLs externas não consultadas e erros em `links.tsv`. O validador completa a conferência canônica e produz a auditoria Markdown por troca atômica de arquivo. A última tentativa fica em `<saida>.validation.md`; só builds aprovados incluem uma cópia em `reports/validation.md`. Dessa forma, registrar um erro não modifica o snapshot válido anterior.
+
+## Reprodutibilidade e verificação em navegador
+
+O packager cria uma cópia temporária do payload, normaliza diretórios para 755 e arquivos regulares para 644, ordena as entradas e força UID/GID 0. O formato GNU evita cabeçalhos PAX dependentes do ambiente; gzip usa `-n -9`. Variáveis TAR_OPTIONS e GZIP não alteram o empacotamento. O original permanece intacto, e falhas descartam o trabalho temporário.
+
+SOURCE_DATE_EPOCH, quando informado, precisa ser um inteiro Unix não negativo aceito pelo programa. As datas de métricas e relatório usam essa referência em UTC; o PDF opcional ativa a saída invariável do ReportLab. O relatório mantém as contagens reais do cloc, omitindo apenas sua duração e taxas variáveis. Sem epoch explícito, a data dos artefatos continua sendo a de execução; o mtime do tar usa zero.
+
+Os testes Chromium executam HTTP real contra os dois previews e complementam jsdom. Nenhuma conexão externa da página é aceita. Há evidências de tela e traces de falha, além de verificações de CSP, sanitização e sandbox dos ativos HTML.

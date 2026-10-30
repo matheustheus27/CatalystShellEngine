@@ -10,8 +10,22 @@ const root = path.resolve(__dirname, '../..');
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'catalyst-browser-'));
 const origin = 'http://localhost:19000';
 let dom;
+function toPosix(arg) {
+  if (typeof arg !== 'string') return arg;
+  if (/^[A-Za-z]:[\\/]/.test(arg)) {
+    const drive = arg[0].toLowerCase();
+    return `/mnt/${drive}` + arg.slice(2).replace(/\\/g, '/');
+  }
+  return arg.replace(/\\/g, '/');
+}
+
 function cli(...args) {
-  const result = spawnSync('bash', [path.join(fixture, 'catalyst.sh'), ...args], { encoding: 'utf8', timeout: 60000 });
+  const isWin = process.platform === 'win32';
+  const command = isWin ? 'wsl' : 'bash';
+  const execArgs = isWin
+    ? ['bash', toPosix(path.join(fixture, 'catalyst.sh')), ...args.map(toPosix)]
+    : [path.join(fixture, 'catalyst.sh'), ...args];
+  const result = spawnSync(command, execArgs, { encoding: 'utf8', timeout: 60000 });
   return result;
 }
 function build() {

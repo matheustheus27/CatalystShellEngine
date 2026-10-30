@@ -122,7 +122,8 @@ def export(source: Path, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(str(target), pagesize=landscape(A4), leftMargin=36, rightMargin=36,
                             topMargin=30, bottomMargin=32, title='Catalyst Shell Engine - Relatorio',
-                            author='Matheus Thiago de Souza Ferreira')
+                              author='Matheus Thiago de Souza Ferreira',
+                              invariant='SOURCE_DATE_EPOCH' in os.environ)
     original_cmap = ttfonts.makeToUnicodeCMap
 
     def unicode_cmap(*args, **kwargs):

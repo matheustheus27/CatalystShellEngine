@@ -20,7 +20,7 @@ Em `catalyst.sh`, `echo` e `date` mostram a data da execução. `cd` e `pwd` det
 
 ### 03. Sistema de arquivos
 
-`scripts/core/packager.sh` executa `tar -czf "$output_archive"` para reunir os artefatos e comprimi-los com gzip. Outros módulos usam `mkdir`, `cp`, `mv`, `ln` e `rm` na preparação, publicação e limpeza de recursos temporários.
+`scripts/core/packager.sh` usa `tar --sort=name` para reunir os artefatos em ordem determinística e envia o fluxo a `gzip -n -9`. Datas, identidade e permissões são normalizadas sem alterar a publicação original. Outros módulos usam `mkdir`, `cp`, `mv`, `ln` e `rm` na preparação, publicação e limpeza de recursos temporários.
 
 ### 04. Permissões de arquivos
 

@@ -27,7 +27,7 @@ O programa recebe capítulos fragmentados em `docs/`, ordena os arquivos, normal
 3. **Normalização de Texto**: sed converte CRLF sem remover espaços significativos ou alterar os fontes.
 4. **Validação de Referências Locais**: Regex, índice por capítulo e caminhos canônicos verificam links, fragmentos e ativos, a auditoria Markdown informa arquivo, linha, destino e motivo.
 5. **Métricas de Publicação**: `wc`, `head` e `tail` produzem contagens e amostras.
-6. **Empacotamento de Release**: `.tar.gz` com permissões explícitas, SHA-256 e checksum de compatibilidade.
+6. **Empacotamento de Release**: `.tar.gz` reproduzível com ordem, datas, identidade e permissões normalizadas, SHA-256 e checksum de compatibilidade.
 7. **Preview com Controle de Processos**: Backend Bash/netcat e modo concorrente Python opcional, com porta, PID e sinais.
 8. **Relatório Acadêmico**: Planilha dinâmica de conceitos, execução real do cloc e código numerado por `nl -ba`.
 9. **Testes Automatizados**: Integração, regressões, transações, HTTP e testes da interface offline.
@@ -167,6 +167,7 @@ A suíte usa diretórios temporários Linux e verifica pipeline, validação, tr
 
 ```bash
 npm ci --ignore-scripts --no-audit --no-fund
+npx playwright install --with-deps --only-shell chromium
 bash scripts/ci/check.sh
 ```
 
@@ -179,3 +180,27 @@ O build verifica `vendor/SHA256SUMS` e não baixa bibliotecas. Atualizações s�
 ## 📜 Licença e Identidade do Projeto
 
 Os termos do projeto estão em `LICENSE`. As dependências vendorizadas mantêm suas próprias licenças em `vendor/`.
+
+---
+
+## 📦 Releases Reproduzíveis e Navegador Real
+
+`pack` gera o mesmo `.tar.gz` para os mesmos bytes da publicação, normalizando metadados e usando gzip sem nome ou data no cabeçalho. Para repetir também a geração de métricas e relatório, fixe uma referência Unix em UTC com `SOURCE_DATE_EPOCH`:
+
+```bash
+export SOURCE_DATE_EPOCH=1700000000
+./catalyst.sh all
+./catalyst.sh report
+./catalyst.sh pack
+```
+
+Use o mesmo epoch, conteúdo e versões das ferramentas nas repetições. Sem essa variável, métricas e relatório continuam registrando a data da execução e podem mudar de conteúdo; o empacotamento do mesmo snapshot permanece determinístico. Relatórios preexistentes também fazem parte dos bytes do release.
+
+Os testes reais usam Playwright/Chromium, além do jsdom existente. Depois de instalar as dependências de desenvolvimento e o navegador pelo procedimento acima:
+
+```bash
+npm run test:browser
+npm run test:browser -- --project
+```
+
+O segundo comando também testa a publicação principal já gerada. São verificados HTTP nos dois backends, carregamento de CSS/JS, navegação, tema persistido, foco, viewport móvel, impressão, Mermaid e CSP. Capturas ficam em `.catalyst/browser-artifacts/`; falhas geram screenshot e trace. O navegador é necessário apenas para desenvolvimento, não para `all` ou para consultar a publicação.

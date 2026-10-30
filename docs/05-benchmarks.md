@@ -37,13 +37,14 @@ As quantidades descrevem os cenários configurados nos testes, não uma garantia
 
 Os testes da interface usam Node 24.22.2 e jsdom, com os bundles locais reais. Eles exercitam títulos repetidos, H6/Setext, cercas, referências por capítulo, caminhos relativos, rollback, DOMPurify, IDs únicos, Mermaid e operação sem recursos externos. A etapa `--project` também carrega a documentação real produzida pelo build.
 
-O jsdom simula o DOM e usa adaptações de geometria SVG para Mermaid, não substitui uma inspeção visual em navegador real. Confira visualmente o sumário, o tema, a responsividade e a impressão antes de uma apresentação.
+O jsdom simula o DOM e usa adaptações de geometria SVG para Mermaid. Ele é complementado pelos testes Chromium reais, sem substituir a revisão visual e editorial antes de apresentar. Confira visualmente o sumário, o tema, a responsividade e a impressão antes de uma apresentação.
 
 Com Node/npm disponíveis:
 
 ```bash
 sudo apt install -y shellcheck python3
 npm ci --ignore-scripts --no-audit --no-fund
+npx playwright install --with-deps --only-shell chromium
 bash scripts/ci/check.sh
 ```
 
@@ -88,3 +89,11 @@ Uma comparação externa exige a mesma entrada, os mesmos artefatos esperados e 
 ## Registro da verificação de entrega
 
 Antes de apresentar, anote a revisão dos fontes, o ambiente, os comandos executados e seus resultados. Recompile depois de editar a documentação, gere novamente o relatório e o PDF, revise as páginas e empacote por último. Os comandos estão no [guia acadêmico](../CEFET_REPORT.md).
+
+## Reprodutibilidade binária e evidências Chromium
+
+A suíte de integração compara releases de dois diretórios, variando fuso e umask, com SOURCE_DATE_EPOCH fixo. Confere mtime, UID/GID, modos e cabeçalho gzip, repete o pack após alterar permissões e datas, compara os relatórios e verifica que conteúdo diferente produz outro hash. Epoch inválido deve falhar sem modificar o pacote anterior.
+
+`npm run test:browser -- --project` exercita os dois previews com uma fixture de segurança e o livro principal em Chromium. Verifica recursos locais, IDs, Mermaid, busca, navegação, tema persistido, foco, viewport de 390px, impressão, CSP e sandbox. As páginas não podem solicitar recursos externos. Screenshots e traces de falha ficam em `.catalyst/browser-artifacts/` e são guardados pela CI.
+
+A igualdade depende dos mesmos bytes de entrada, epoch e toolchain. Diferenças de conteúdo gerado, versões de ferramentas ou fontes PDF são mudanças de entrada relevantes; não se declara igualdade universal entre sistemas arbitrários.
