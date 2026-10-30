@@ -31,7 +31,7 @@ _catalyst_completions() {
         prev="${COMP_WORDS[COMP_CWORD-1]:-}"
     fi
 
-    local commands="all build validate toc sanitize stats pack serve clean report test watch demo completion help"
+    local commands="all build validate toc sanitize stats pack serve clean report test watch demo completion dependencies help"
 
     # Encontra o indice onde catalyst(.sh) foi chamado
     local script_idx=-1
@@ -65,6 +65,9 @@ _catalyst_completions() {
         return 0
     fi
 
+    # Identifica o subcomando ativo
+    local active_cmd="${COMP_WORDS[target_idx]:-}"
+
     # 2. Parametros contextuais de cada subcomando
     case "$prev" in
         --docs|--output)
@@ -72,11 +75,23 @@ _catalyst_completions() {
             return 0
             ;;
         completion)
-            _catalyst_reply -W "install uninstall source help" -- "$cur"
+            _catalyst_reply -W "install uninstall source help --install --uninstall --source" -- "$cur"
+            return 0
+            ;;
+        dependencies)
+            _catalyst_reply -W "--list --install --check --help -l -i" -- "$cur"
+            return 0
+            ;;
+        help)
+            _catalyst_reply -W "$commands" -- "$cur"
+            return 0
+            ;;
+        report)
+            _catalyst_reply -W "--pdf --docs --output" -- "$cur"
             return 0
             ;;
         serve)
-            _catalyst_reply -W "--stop stop --restart restart --backend --concurrent --port -p --docs --output 8000 8080 3000" -- "$cur"
+            _catalyst_reply -W "--port -p --backend --stop --restart --docs --output 8000 8080 3000" -- "$cur"
             return 0
             ;;
         --backend)
@@ -84,12 +99,34 @@ _catalyst_completions() {
             return 0
             ;;
         --port|-p)
-            _catalyst_reply -W "8000 8080 3000 5000" -- "$cur"
+            _catalyst_reply -W "8000 8080 3000 5000 9000" -- "$cur"
             return 0
             ;;
     esac
+
+    # Sugestoes baseadas no subcomando ativo quando o usuario digita '--'
     if [[ "$cur" == -* ]]; then
-        _catalyst_reply -W "--docs --output --help" -- "$cur"
+        case "$active_cmd" in
+            serve)
+                _catalyst_reply -W "--port -p --backend --stop --restart --docs --output --help" -- "$cur"
+                ;;
+            report)
+                _catalyst_reply -W "--pdf --docs --output --help" -- "$cur"
+                ;;
+            dependencies)
+                _catalyst_reply -W "--list -l --install -i --check --help" -- "$cur"
+                ;;
+            completion)
+                _catalyst_reply -W "--install -i --uninstall -u --source --help" -- "$cur"
+                ;;
+            all|build|validate|toc|sanitize|stats|pack|watch)
+                _catalyst_reply -W "--docs --output --help" -- "$cur"
+                ;;
+            *)
+                _catalyst_reply -W "--docs --output --help" -- "$cur"
+                ;;
+        esac
+        return 0
     fi
 }
 

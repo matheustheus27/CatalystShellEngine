@@ -10,6 +10,7 @@ validate_source_date_epoch() {
     fi
 }
 
+# shellcheck disable=SC2120
 artifact_date() {
     if [ "${SOURCE_DATE_EPOCH+x}" ]; then
         LC_ALL=C date -u -d "@$SOURCE_DATE_EPOCH" "$@"

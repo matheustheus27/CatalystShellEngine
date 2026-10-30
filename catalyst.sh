@@ -60,6 +60,8 @@ source "$SCRIPTS_DIR/core/cli-options.sh"
 # shellcheck source=scripts/core/reproducibility.sh
 source "$SCRIPTS_DIR/core/reproducibility.sh"
 validate_source_date_epoch
+# shellcheck source=scripts/core/dependencies.sh
+source "$SCRIPTS_DIR/core/dependencies.sh"
 
 # Atributo de variavel: inteira (Conceito 12)
 declare -i TOTAL_DOCS=0
@@ -81,39 +83,221 @@ show_banner() {
 }
 
 show_help() {
-    # Redirecionamento padrao (Conceito 07)
-    cat << EOF
-Uso: $0 [COMANDO] [OPCOES]
+    local target="${1:-}"
+    case "$target" in
+        all)
+            cat << 'EOF'
+COMANDO: all
+  Executa o pipeline completo de publicacao em modo transacional atomico.
 
-Comandos disponiveis:
-  build       Consolida, normaliza CRLF, gera sumario, valida e prepara HTML
-  validate    Audita links internos e referencias a imagens locais com regex
-  toc         Atualiza o snapshot e gera o sumario hierarquico com AWK
-  sanitize    Reconstroi o snapshot com normalizacao CRLF por sed
-  stats       Reconstroi o snapshot e calcula capitulos, linhas e palavras
-  pack        Empacota o snapshot existente em tar.gz com permissoes e SHA-256
-  serve       Inicia servidor HTTP local em background (suporta --stop e porta)
-  report      Gera relatorio com codigo numerado; --pdf exporta para PDF
-  test        Executa suite de testes automatizados e assercoes do sistema
-  watch       Observa checksums de Markdown a cada segundo e recompila
-  clean       Limpa artefatos temporarios e gerados em dist/
-  all         Executa o pipeline completo de publicacao (build, validate, pack)
-  help        Exibe esta mensagem de ajuda detalhada
-  completion  Instala ou remove o autocompletar da CLI no shell (~/.bashrc)
-  demo        Demonstra publicacao, erro de referencia e preservacao da saida
-Opcoes comuns (antes ou depois do comando):
-  --docs CAMINHO    Pasta de capitulos; raiz dos ativos e a pasta pai
-  --output CAMINHO  Pasta de publicacao (padrao: dist do motor)
-Exemplos:
-  $0 all
-  $0 all --docs examples/demo/docs --output /tmp/catalyst-demo-site
-  $0 serve --output /tmp/catalyst-demo-site --port 8081
-  $0 test
-  $0 report
-  $0 watch
-  $0 serve --backend threaded --port 8080
-  $0 serve --stop
-  $0 serve --restart
+SINTAXE:
+  ./catalyst.sh all [--docs CAMINHO] [--output CAMINHO]
+
+ETAPAS EXECUTADAS:
+  1. Inicializacao das pastas de staging e publicacao
+  2. Consolidacao e ordenacao natural de capitulos Markdown
+  3. Geracao de sumario hierarquico com numeracao automatica via AWK
+  4. Validacao estrita de links locais, fragmentos/ancoras e arquivos de ativos
+  5. Calculo de metricas estatisticas (linhas, palavras, amostras)
+  6. Compilacao da interface estatica HTML responsiva (com Mermaid e temas)
+  7. Empacotamento deterministico do release bundle (.tar.gz com SHA-256)
+
+EXEMPLOS:
+  ./catalyst.sh all
+  ./catalyst.sh all --docs /meu-projeto/docs --output /meu-projeto/dist
+EOF
+            return 0
+            ;;
+        serve)
+            cat << 'EOF'
+COMANDO: serve
+  Gerencia o servidor HTTP local para inspecao e navegacao da publicacao.
+
+SINTAXE:
+  ./catalyst.sh serve [OPCOES] [PORTA]
+
+OPCOES:
+  --port, -p NUMERO     Define a porta TCP do servidor (padrao: 8000)
+  --backend NOME        Seleciona o motor HTTP: 'bash' (padrao) ou 'threaded' (Python)
+  --stop                Encerra o servidor ativo em execucao para a pasta de saida
+  --restart             Reinicia o servidor aplicando a porta e configuracoes informadas
+  --output CAMINHO      Especifica qual publicacao hospedar (padrao: dist)
+
+CARACTERISTICAS:
+  - Backend 'bash': implementado com Bash e OpenBSD netcat (nc -N -k)
+  - Backend 'threaded': servidor Python concorrente multithread (suporta multiplos clientes)
+  - Seguranca: cabecalhos restritivos CSP (script-src 'self'), sandbox para ativos e isolamento
+
+EXEMPLOS:
+  ./catalyst.sh serve
+  ./catalyst.sh serve --port 8080
+  ./catalyst.sh serve --backend threaded --port 8088
+  ./catalyst.sh serve --output /tmp/demo-site --port 9000
+  ./catalyst.sh serve --stop
+  ./catalyst.sh serve --restart --port 8080
+EOF
+            return 0
+            ;;
+        report)
+            cat << 'EOF'
+COMANDO: report
+  Gera o relatorio academico detalhado formatado para submissao (ex: SIGAA) e exportacao em PDF.
+
+SINTAXE:
+  ./catalyst.sh report [--pdf] [--output CAMINHO]
+
+OPCOES:
+  --pdf                 Exporta adicionalmente o relatorio compilado em formato PDF (A4 paisagem)
+  --output CAMINHO      Define o diretorio de publicacao onde salvar reports/
+
+CONTEUDO GERADO:
+  - Mapeamento completo dos 20 conceitos de sistemas operacionais e shell scripting
+  - Contagem real de linhas de codigo e linguagens auditada por cloc
+  - Codigo-fonte completo numerado linha a linha via nl -ba
+  - Gravacao de sigaa-report.md e sigaa-report.pdf
+
+EXEMPLOS:
+  ./catalyst.sh report
+  ./catalyst.sh report --pdf
+  CATALYST_PDF_PYTHON=/usr/bin/python3 ./catalyst.sh report --pdf
+EOF
+            return 0
+            ;;
+        dependencies)
+            cat << 'EOF'
+COMANDO: dependencies
+  Verifica e instala dependencias do sistema, ferramentas de auditoria e testes.
+
+SINTAXE:
+  ./catalyst.sh dependencies [--list | --install]
+
+OPCOES:
+  --list, -l            Lista todas as ferramentas do nucleo, preview, PDF e testes com status
+  --install, -i         Instala automaticamente dependencias ausentes no Linux/WSL (apt, pip, Playwright)
+
+COMPONENTES VERIFICADOS:
+  - Nucleo Shell: bash (>=4.4), gawk, sed, grep, findutils, tar, gzip, util-linux (flock, setsid)
+  - Previews HTTP: netcat-openbsd (nc -N), python3
+  - Relatorio/PDF: cloc, python3-reportlab, fonts-dejavu-core
+  - Qualidade/Testes: shellcheck, nodejs, npm, chromium (Playwright)
+
+EXEMPLOS:
+  ./catalyst.sh dependencies --list
+  ./catalyst.sh dependencies --install
+EOF
+            return 0
+            ;;
+        completion)
+            cat << 'EOF'
+COMANDO: completion
+  Gerencia a integracao de autocompletar inteligente para Bash e Zsh.
+
+SINTAXE:
+  ./catalyst.sh completion [install | uninstall | source]
+
+ACOES:
+  install, -i           Adiciona a fonte do completion ao seu perfil shell (~/.bashrc ou ~/.zshrc)
+  uninstall, -u         Remove a configuracao de autocompletar do seu perfil
+  source                Emite o script de autocompletar diretamente no stdout para avaliacao imediata
+
+EXEMPLOS:
+  ./catalyst.sh completion install
+  source <(./catalyst.sh completion source)
+  ./catalyst.sh completion uninstall
+EOF
+            return 0
+            ;;
+    esac
+
+    # Ajuda Geral Completa
+    cat << 'EOF'
+Catalyst Shell Engine - Manual de Operacao e Referencia da CLI
+
+NOME:
+  catalyst.sh - Motor de documentacao tecnica modular e publicacao estatica em Shell Script
+
+SINOPSE:
+  ./catalyst.sh [COMANDO] [OPCOES]
+
+DESCRICAO:
+  O Catalyst Shell Engine consolida capitulos Markdown fragmentados, normaliza CRLF,
+  gera sumario hierarquico numerado via GNU AWK, valida integridade de links internos,
+  fragmentos (#ancoras) e ativos com regex, calcula metricas de publicacao, compila
+  uma aplicacao web estatica e empacota releases deterministricos (.tar.gz com SHA-256).
+
+COMANDOS PRINCIPAIS:
+  all             Executa o pipeline completo: build, validate, stats, HTML e pack
+  build           Consolida capitulos, normaliza CRLF, gera sumario e prepara a interface
+  validate        Audita rigorosamente links locais, fragmentos e referencias a arquivos
+  toc             Regera o sumario hierarquico dinamicamente a partir dos cabeçalhos H1-H6
+  sanitize        Higieniza arquivos Markdown convertendo quebras CRLF em LF por sed
+  stats           Calcula metricas estatisticas (capitulos, linhas, palavras e amostras)
+  pack            Gera o tarball deterministico em releases/ com permissoes e checksum SHA-256
+  serve           Inicia servidor HTTP local em segundo plano (backends 'bash' e 'threaded')
+  report          Gera relatorio academico (SIGAA) com codigo numerado; use --pdf para PDF
+  dependencies    Verifica (--list) ou instala (--install) dependencias de sistema e testes
+  completion      Instala, desinstala ou exporta o script de autocompletar (Bash/Zsh)
+  test            Executa a suite completa de testes automatizados e integracao
+  watch           Monitora alteracoes em docs/ e recompila continuamente a cada segundo
+  demo            Executa demonstracao com injecao intencional de falha e rollback
+  clean           Remove artefatos gerados e reestabelece permissoes da pasta dist/
+  help [CMD]      Exibe este manual detalhado ou a ajuda contextual de um comando especifico
+
+OPCOES GERAIS (podem ser informadas antes ou depois do comando):
+  --docs CAMINHO        Define a pasta contendo os capitulos Markdown (padrao: ./docs)
+  --output CAMINHO      Define a pasta de destino da publicacao gerada (padrao: ./dist)
+  --help, -h            Exibe a documentacao de ajuda da CLI
+
+OPCOES ESPECIFICAS POR COMANDO:
+  report:
+    --pdf               Gera relatorio adicional em formato PDF (requer reportlab e fontes DejaVu)
+  serve:
+    --port, -p NUMERO   Porta TCP de escuta (padrao: 8000)
+    --backend NOME      Seleciona backend: 'bash' (netcat) ou 'threaded' (Python multithread)
+    --stop              Encerra o servidor ativo em segundo plano
+    --restart           Reinicia o servidor com novas configuracoes de porta/backend
+  dependencies:
+    --list, -l          Verifica o status de cada componente e dependencias faltantes
+    --install, -i       Instala automaticamente pacotes necessarios via apt, pip e Playwright
+  completion:
+    install             Grava a ativacao do completion no ~/.bashrc ou ~/.zshrc
+    uninstall           Remove a linha de completion do arquivo de configuracao
+    source              Emite o conteudo do script de autocompletar para execucao via eval
+
+VARIAVEIS DE AMBIENTE RELEVANTES:
+  SOURCE_DATE_EPOCH     Define timestamp Unix fixo em UTC para geracao de builds 100% reproduziveis
+  CATALYST_PDF_PYTHON   Caminho para o interpretador Python customizado com reportlab
+  CATALYST_ENV          Ambiente de execucao (ex: production, test)
+
+EXEMPLOS PRATICOS:
+  1. Compilacao completa padrao:
+     $ ./catalyst.sh all
+
+  2. Iniciar servidor local na porta 8080 com backend multithread:
+     $ ./catalyst.sh serve --backend threaded --port 8080
+
+  3. Encerrar o servidor HTTP ativo:
+     $ ./catalyst.sh serve --stop
+
+  4. Publicar projeto customizado em outra pasta:
+     $ ./catalyst.sh all --docs /caminho/meu-projeto/docs --output /tmp/site-gerado
+
+  5. Inspecionar e instalar dependencias do sistema:
+     $ ./catalyst.sh dependencies --list
+     $ ./catalyst.sh dependencies --install
+
+  6. Gerar relatorio academico com exportacao em PDF:
+     $ ./catalyst.sh report --pdf
+
+  7. Gerar release com hash binario 100% deterministico e reproduzivel:
+     $ export SOURCE_DATE_EPOCH=1700000000
+     $ ./catalyst.sh all && ./catalyst.sh pack
+
+  8. Executar os testes automatizados do sistema:
+     $ ./catalyst.sh test
+
+Para ajuda sobre um comando especifico, execute:
+  ./catalyst.sh help [all|serve|report|dependencies|completion|validate|...]
 EOF
 }
 
@@ -251,7 +435,21 @@ manage_server() {
 generate_sigaa_report() {
     bash "$SCRIPTS_DIR/academic-report.sh" "$REPORTS_OUT_DIR/sigaa-report.md"
     if [ "${1:-}" = --pdf ]; then
-        "${CATALYST_PDF_PYTHON:-python3}" "$SCRIPTS_DIR/export-report-pdf.py" \
+        local py_cmd="${CATALYST_PDF_PYTHON:-}"
+        if [ -z "$py_cmd" ]; then
+            if [ -x "$BASE_DIR/.venv/bin/python3" ] && "$BASE_DIR/.venv/bin/python3" -c "import reportlab" >/dev/null 2>&1; then
+                py_cmd="$BASE_DIR/.venv/bin/python3"
+            elif [ -x "$BASE_DIR/.venv-report/bin/python3" ] && "$BASE_DIR/.venv-report/bin/python3" -c "import reportlab" >/dev/null 2>&1; then
+                py_cmd="$BASE_DIR/.venv-report/bin/python3"
+            elif python3 -c "import reportlab" >/dev/null 2>&1; then
+                py_cmd="python3"
+            else
+                echo "Erro: reportlab nao encontrado para exportacao do relatorio em PDF." >&2
+                echo "Execute './catalyst.sh dependencies --install' para instalar as dependencias automaticamente." >&2
+                return 1
+            fi
+        fi
+        "$py_cmd" "$SCRIPTS_DIR/export-report-pdf.py" \
             "$REPORTS_OUT_DIR/sigaa-report.md" "$REPORTS_OUT_DIR/sigaa-report.pdf"
     elif [ -n "${1:-}" ]; then
         echo 'Uso: catalyst.sh report [--pdf]' >&2
@@ -339,6 +537,7 @@ case "$COMMAND" in
     demo) [ "${#CLI_ARGS[@]}" -eq 0 ] || exit 1; bash "$SCRIPTS_DIR/demo.sh" ;;
     test) bash "$SCRIPTS_DIR/tests/integration.sh" ;;
     completion) manage_completion completion "${CLI_ARGS[@]}" ;;
-    help|--help|-h) show_banner; show_help ;;
+    dependencies) show_banner; manage_dependencies "${CLI_ARGS[@]}" ;;
+    help|--help|-h) show_banner; show_help "${CLI_ARGS[0]:-}" ;;
     *) echo "Opcao invalida: $COMMAND" >&2; show_help; exit 1 ;;
 esac

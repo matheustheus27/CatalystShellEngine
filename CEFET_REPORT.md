@@ -57,7 +57,7 @@ python3 -m venv .venv-report
 Depois de atualizar a publicação e executar os testes:
 
 ```bash
-CATALYST_PDF_PYTHON="$PWD/.venv-report/bin/python" ./catalyst.sh report --pdf
+./catalyst.sh report --pdf
 ./catalyst.sh pack
 (cd dist/releases && sha256sum -c catalyst-release-1.0.0.tar.gz.sha256)
 ```

@@ -26,7 +26,7 @@ parse_cli() {
     COMMAND="${COMMAND:-help}"
     case "$COMMAND" in
         help) return 0 ;;
-        test|demo|completion)
+        test|demo|completion|dependencies)
             [ "$selected" = 0 ] || { echo "$COMMAND nao aceita --docs ou --output." >&2; return 1; }
             return 0 ;;
     esac

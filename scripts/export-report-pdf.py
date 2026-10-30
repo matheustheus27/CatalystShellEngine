@@ -17,16 +17,35 @@ try:
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, LongTable, KeepTogether, XPreformatted
 except ImportError:
-    raise SystemExit("Instale reportlab em um venv e configure CATALYST_PDF_PYTHON=/caminho/venv/bin/python3.")
+    raise SystemExit(
+        "Erro: A biblioteca 'reportlab' e necessaria para exportar o relatorio em PDF.\n"
+        "Execute './catalyst.sh dependencies --install' para instalar automaticamente\n"
+        "ou configure a variavel CATALYST_PDF_PYTHON=/caminho/do/python."
+    )
 
 
 def export(source: Path, target: Path) -> None:
-    fonts = Path('/usr/share/fonts/truetype/dejavu')
+    font_candidates = [
+        Path('/usr/share/fonts/truetype/dejavu'),
+        Path('/usr/share/fonts/dejavu'),
+        Path('/usr/local/share/fonts'),
+        Path(os.path.expanduser('~/.local/share/fonts')),
+        Path('/mnt/c/Windows/Fonts'),
+        Path('C:/Windows/Fonts'),
+    ]
     for name, filename in [('Body', 'DejaVuSans.ttf'), ('Mono', 'DejaVuSansMono.ttf')]:
-        font = fonts / filename
-        if not font.exists():
-            raise SystemExit(f'Fonte necessaria ausente: {font}')
-        pdfmetrics.registerFont(TTFont(name, str(font)))
+        found = None
+        for font_dir in font_candidates:
+            candidate = font_dir / filename
+            if candidate.is_file():
+                found = candidate
+                break
+        if not found:
+            raise SystemExit(
+                f"Fonte necessaria ausente: {filename}.\n"
+                f"Instale o pacote 'fonts-dejavu-core' ou execute './catalyst.sh dependencies --install'."
+            )
+        pdfmetrics.registerFont(TTFont(name, str(found)))
     symbol_candidates = [os.environ.get('CATALYST_SYMBOL_FONT', ''),
                          '/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf',
                          '/mnt/c/Windows/Fonts/seguiemj.ttf']

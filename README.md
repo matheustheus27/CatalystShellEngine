@@ -38,11 +38,21 @@ O programa recebe capítulos fragmentados em `docs/`, ordena os arquivos, normal
 
 ## 🛠️ Comece por aqui
 
-Em Ubuntu ou Debian, instale as dependências. Este conjunto inclui demonstração, testes e relatório em Markdown:
+O Catalyst inclui gerenciamento automatizado de dependências para Ubuntu, Debian e WSL. Para inspecionar ou instalar todos os componentes do sistema, relatório, PDF e navegadores:
+
+```bash
+chmod +x catalyst.sh
+./catalyst.sh dependencies --list       # Diagnóstico completo de ferramentas e pacotes
+./catalyst.sh dependencies --install    # Instalação automática de dependências ausentes
+./catalyst.sh all
+./catalyst.sh serve
+```
+
+Caso prefira instalar manualmente pelo gerenciador de pacotes:
 
 ```bash
 sudo apt update
-sudo apt install -y git bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc python3
+sudo apt install -y git bash coreutils findutils grep sed gawk tar gzip util-linux netcat-openbsd curl cloc python3 python3-reportlab fonts-dejavu-core shellcheck
 git clone https://github.com/matheustheus27/CatalystShellEngine.git
 cd CatalystShellEngine
 chmod +x catalyst.sh
